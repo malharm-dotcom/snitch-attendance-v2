@@ -1,0 +1,46 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# next
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# windows
+desktop.ini
+Thumbs.db
+
+# claude code internal
+.claude/
+
+# postgres installer (downloaded locally)
+postgresql-*-binaries.zip
+postgresql-*-binaries/
+*.zip
+
+# sensitive data CSVs (load manually on server, never commit)
+data/*.csv

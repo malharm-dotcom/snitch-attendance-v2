@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0efe9;
+  --border: #e2e0d8;
+  --border2: #d0cec4;
+  --accent: #c8df20;
+  --accent-d: #afc410;
+  --accent-text: #2a2a00;
+  --text: #1a1a1a;
+  --text-2: #666;
+  --text-3: #aaa;
+  --danger: #d93030;
+  --success: #1f9e5e;
+  --warn: #c97a00;
+  --r: 10px;
+  --mono: 'DM Mono', monospace;
+  --display: 'Syne', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--display);
+  margin: 0;
+  padding: 0;
+}
+
+/* Status chip colours */
+.chip-present        { background: #d4f0df; color: #1f9e5e; }
+.chip-absent         { background: #fde2e2; color: #d93030; }
+.chip-week-off       { background: #e8e4ff; color: #5b3fc8; }
+.chip-half           { background: #fff3cc; color: #9b6c00; }
+.chip-sick-leave     { background: #ffe4cc; color: #c97a00; }
+.chip-planned-leave  { background: #cce8ff; color: #0068c9; }
+.chip-unplanned-leave{ background: #fde2e2; color: #d93030; }
+.chip-holiday        { background: #e0f4ff; color: #0099cc; }
+.chip-leave          { background: #f0e0ff; color: #7a00cc; }
+
+/* Shimmer animation for skeletons */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
+
+/* Offline banner */
+.offline-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: var(--warn);
+  color: #fff;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-family: var(--mono);
+  z-index: 9999;
+}
+
+/* Smooth reveal for remarks */
+.remarks-area {
+  overflow: hidden;
+  transition: max-height 0.2s ease, opacity 0.2s ease;
+}
+.remarks-area.hidden { max-height: 0; opacity: 0; }
+.remarks-area.shown  { max-height: 120px; opacity: 1; }
+
+/* Row pulse on status change */
+@keyframes rowPulse {
+  0%   { background: var(--accent); }
+  100% { background: transparent; }
+}
+.row-pulse { animation: rowPulse 0.4s ease-out; }
+
+/* Matrix sticky */
+.matrix-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.matrix-table th:first-child,
+.matrix-table td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 2;
+  border-right: 1px solid var(--border);
+}
+.matrix-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface2);
+  z-index: 3;
+}
+.matrix-table thead th:first-child {
+  z-index: 4;
+}

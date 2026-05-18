@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Supervisor {
+  id             Int      @id @default(autoincrement())
+  supervisorName String   @map("supervisor_name") @db.VarChar(200)
+  facility       String   @db.VarChar(50)
+  department     String   @db.VarChar(100)
+  departments    String[]
+  pin            String   @db.VarChar(10)
+  role           String   @default("supervisor") @db.VarChar(20)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("supervisors")
+}
+
+model Employee {
+  id               Int      @id @default(autoincrement())
+  employeeCode     String   @unique @map("employee_code") @db.VarChar(50)
+  employeeName     String   @map("employee_name") @db.VarChar(200)
+  facility         String   @db.VarChar(50)
+  department       String   @db.VarChar(100)
+  shift            String?  @db.VarChar(10)
+  designation      String?  @db.VarChar(100)
+  reportingManager String?  @map("reporting_manager") @db.VarChar(200)
+  rollType         String?  @map("roll_type") @db.VarChar(20)
+  gender           String?  @db.VarChar(10)
+  isActive         Boolean  @default(true) @map("is_active")
+  loadedAt         DateTime @default(now()) @map("loaded_at")
+
+  attendanceDetails AttendanceDetail[]
+
+  @@map("employees")
+}
+
+model AttendanceHeader {
+  id             Int      @id @default(autoincrement())
+  attendanceDate DateTime @map("attendance_date") @db.Date
+  facility       String   @db.VarChar(50)
+  department     String   @db.VarChar(100)
+  markedBy       String   @map("marked_by") @db.VarChar(200)
+  markedAt       DateTime @map("marked_at") @db.Timestamp(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  status         String   @default("submitted") @db.VarChar(20)
+  shift          String?  @db.VarChar(10)
+
+  details AttendanceDetail[]
+
+  @@map("attendance_header")
+}
+
+model AttendanceDetail {
+  id               Int      @id @default(autoincrement())
+  headerId         Int      @map("attendance_header_id")
+  employeeId       Int?     @map("employee_id")
+  employeeCode     String   @map("employee_code") @db.VarChar(50)
+  employeeName     String   @map("employee_name") @db.VarChar(200)
+  attendanceStatus String   @map("attendance_status") @db.VarChar(50)
+  remarks          String?  @db.VarChar(500)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  attendanceDate   DateTime? @map("attendance_date") @db.Date
+
+  header   AttendanceHeader @relation(fields: [headerId], references: [id])
+  employee Employee?        @relation(fields: [employeeCode], references: [employeeCode])
+
+  @@map("attendance_detail")
+}
+
+model AttendanceRewriteRequest {
+  id             Int       @id @default(autoincrement())
+  attendanceDate DateTime  @map("attendance_date") @db.Date
+  facility       String    @db.VarChar(50)
+  department     String    @db.VarChar(100)
+  supervisorName String    @map("supervisor_name") @db.VarChar(200)
+  reason         String    @db.Text
+  requestStatus  String    @default("pending") @map("request_status") @db.VarChar(20)
+  requestedAt    DateTime  @map("requested_at") @db.Timestamp(6)
+  actionedBy     String?   @map("actioned_by") @db.VarChar(200)
+  actionedAt     DateTime? @map("actioned_at") @db.Timestamp(6)
+
+  @@map("attendance_rewrite_requests")
+}
