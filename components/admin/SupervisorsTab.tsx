@@ -76,6 +76,8 @@ const emptyForm = (): EditForm => ({
 
 export default function SupervisorsTab() {
   const [supervisors, setSupervisors] = useState<SupervisorRow[]>([]);
+  const [currentUser, setCurrentUser] = useState('');
+  const [currentFacility, setCurrentFacility] = useState('');
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [saving, setSaving] = useState(false);
@@ -83,7 +85,6 @@ export default function SupervisorsTab() {
   const [addForm, setAddForm] = useState<EditForm>(emptyForm());
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [filterRole, setFilterRole] = useState('');
-  const [filterFacility, setFilterFacility] = useState('');
   const { showToast } = useToast();
 
   const load = useCallback(async () => {
@@ -92,6 +93,8 @@ export default function SupervisorsTab() {
       const res = await fetch('/api/admin/supervisors');
       const data = await res.json();
       setSupervisors(data.supervisors ?? []);
+      setCurrentUser(data.currentUser ?? '');
+      setCurrentFacility(data.currentFacility ?? '');
     } catch {
       showToast('Failed to load supervisors', 'error');
     } finally {
@@ -186,14 +189,19 @@ export default function SupervisorsTab() {
 
   const displayed = supervisors.filter((s) => {
     if (filterRole && s.role !== filterRole) return false;
-    if (filterFacility && s.facility !== filterFacility) return false;
     return true;
   });
 
+  function canEdit(s: SupervisorRow) {
+    if (s.role === 'manager') return false;
+    if (s.supervisorName === currentUser) return false;
+    return true;
+  }
+
   const roleBadge: Record<string, React.CSSProperties> = {
-    admin:      { background: '#fde2e2', color: '#d93030' },
-    manager:    { background: '#e8e4ff', color: '#5b3fc8' },
-    supervisor: { background: '#d4f0df', color: '#1f9e5e' },
+    admin:      { background: 'rgba(220,38,38,0.1)',  color: '#dc2626' },
+    manager:    { background: 'rgba(79,70,229,0.1)',  color: '#4f46e5' },
+    supervisor: { background: 'rgba(22,163,74,0.1)',  color: '#16a34a' },
   };
 
   function DeptCheckboxes({ form, setter }: { form: EditForm; setter: (f: EditForm) => void }) {
@@ -211,7 +219,7 @@ export default function SupervisorsTab() {
             fontFamily: 'var(--mono)',
             fontSize: 11,
             cursor: 'pointer',
-            background: form.departments.includes(d) ? 'rgba(200,223,32,0.12)' : 'transparent',
+            background: form.departments.includes(d) ? 'rgba(79,70,229,0.08)' : 'transparent',
             transition: 'all 0.12s',
             userSelect: 'none',
           }}>
@@ -325,16 +333,17 @@ export default function SupervisorsTab() {
           Supervisors
           {!loading && <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-3)', fontWeight: 400, marginLeft: 8 }}>{supervisors.length} total</span>}
         </h2>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <select value={filterFacility} onChange={(e) => setFilterFacility(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, background: 'var(--surface)' }}>
-            <option value="">All facilities</option>
-            {FACILITIES.map((f) => <option key={f}>{f}</option>)}
-          </select>
-          <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, background: 'var(--surface)' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          {currentFacility && (
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '4px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, color: 'var(--text-2)' }}>
+              {currentFacility}
+            </span>
+          )}
+          <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, background: 'var(--surface)', color: 'var(--text)' }}>
             <option value="">All roles</option>
             {ROLES.map((r) => <option key={r} value={r} style={{ textTransform: 'capitalize' }}>{r}</option>)}
           </select>
-          <button onClick={() => { setAddForm(emptyForm()); setShowAdd(true); }} style={{ padding: '7px 16px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          <button onClick={() => { setAddForm({ ...emptyForm(), facility: currentFacility }); setShowAdd(true); }} style={{ padding: '7px 16px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
             + Add
           </button>
         </div>
@@ -385,12 +394,18 @@ export default function SupervisorsTab() {
                     </span>
                   </td>
                   <td style={{ padding: '10px 12px' }}>
-                    <button onClick={() => openEdit(s)} style={{ padding: '5px 12px', border: '1.5px solid var(--border)', borderRadius: 6, background: 'none', fontFamily: 'var(--mono)', fontSize: 11, cursor: 'pointer', transition: 'border-color 0.12s, background 0.12s' }}
-                      onMouseEnter={(e) => { const el = e.currentTarget; el.style.borderColor = 'var(--accent)'; el.style.background = 'rgba(200,223,32,0.1)'; }}
-                      onMouseLeave={(e) => { const el = e.currentTarget; el.style.borderColor = 'var(--border)'; el.style.background = 'none'; }}
-                    >
-                      Edit
-                    </button>
+                    {canEdit(s) ? (
+                      <button onClick={() => openEdit(s)} style={{ padding: '5px 12px', border: '1.5px solid var(--border)', borderRadius: 6, background: 'none', fontFamily: 'var(--mono)', fontSize: 11, cursor: 'pointer', transition: 'border-color 0.12s, background 0.12s' }}
+                        onMouseEnter={(e) => { const el = e.currentTarget; el.style.borderColor = 'var(--accent)'; el.style.background = 'rgba(79,70,229,0.06)'; }}
+                        onMouseLeave={(e) => { const el = e.currentTarget; el.style.borderColor = 'var(--border)'; el.style.background = 'none'; }}
+                      >
+                        Edit
+                      </button>
+                    ) : (
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)' }}>
+                        {s.supervisorName === currentUser ? 'You' : s.role === 'manager' ? '—' : ''}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

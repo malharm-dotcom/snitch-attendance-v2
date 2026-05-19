@@ -4,52 +4,51 @@
 
 /* ─── Tokens ────────────────────────────────────────────────────────────── */
 :root {
-  /* Midnight Velvet palette */
-  --bg:           #0d0e18;
-  --surface:      #161829;
-  --surface2:     #1d1f35;
-  --border:       #272a45;
-  --border2:      #363a60;
+  /* Warm white light theme */
+  --bg:           #f9f8f5;
+  --surface:      #ffffff;
+  --surface2:     #f3f2ef;
+  --border:       #e6e4dc;
+  --border2:      #d4d1c8;
 
-  /* Periwinkle accent */
-  --accent:       #8b7df4;
-  --accent-d:     #7060e8;
-  --accent-text:  #f0eeff;
-  --accent-glow:  rgba(139,125,244,0.20);
+  /* Indigo accent — readable, professional */
+  --accent:       #4f46e5;
+  --accent-d:     #4338ca;
+  --accent-text:  #ffffff;
+  --accent-glow:  rgba(79,70,229,0.18);
 
   /* Text */
-  --text:         #edeaf8;
-  --text-2:       #8c88b0;
-  --text-3:       #52507a;
+  --text:         #141414;
+  --text-2:       #6b7280;
+  --text-3:       #a3a3a3;
 
   /* Semantic */
-  --danger:       #f06b6b;
-  --danger-bg:    rgba(240,107,107,0.12);
-  --success:      #52c98b;
-  --success-bg:   rgba(82,201,139,0.12);
-  --warn:         #e09e50;
-  --warn-bg:      rgba(224,158,80,0.12);
-  --info:         #60b0f4;
-  --info-bg:      rgba(96,176,244,0.12);
+  --danger:       #dc2626;
+  --danger-bg:    rgba(220,38,38,0.08);
+  --success:      #16a34a;
+  --success-bg:   rgba(22,163,74,0.08);
+  --warn:         #ca8a04;
+  --warn-bg:      rgba(202,138,4,0.08);
+  --info:         #2563eb;
+  --info-bg:      rgba(37,99,235,0.08);
 
   /* Shape */
   --r:            12px;
 
-  /* Typography — resolved from Next.js font vars */
+  /* Typography */
   --display:      var(--font-plus-jakarta), system-ui, sans-serif;
   --mono:         var(--font-jetbrains), 'Fira Code', monospace;
 
   /* Elevation */
-  --shadow-sm:    0 1px 4px rgba(0,0,0,0.45);
-  --shadow-md:    0 4px 20px rgba(0,0,0,0.55);
-  --shadow-lg:    0 16px 48px rgba(0,0,0,0.65);
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md:    0 4px 16px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-lg:    0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.07);
 }
 
 /* ─── Reset ─────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 
-/* ─── Body + ambient orb background ────────────────────────────────────── */
 body {
   background: var(--bg);
   color: var(--text);
@@ -57,29 +56,20 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Slowly drifting ambient light — gives the UI an alive, breathing quality */
+/* Very subtle corner tint — barely visible on white, just adds warmth */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 65% 55% at 12% 18%, rgba(139,125,244,0.11) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 45% at 88% 78%, rgba(82,201,139,0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 35% at 65% 8%,  rgba(224,158,80,0.05) 0%, transparent 55%);
-  animation: auraShift 20s ease-in-out infinite;
+    radial-gradient(ellipse 70% 50% at -5% -5%,  rgba(79,70,229,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 105% 105%, rgba(79,70,229,0.03) 0%, transparent 55%);
   pointer-events: none;
   z-index: -1;
-}
-
-@keyframes auraShift {
-  0%,100% { transform: translate(0,   0  ) scale(1.00); }
-  30%     { transform: translate(45px,-30px) scale(1.04); }
-  60%     { transform: translate(-28px,38px) scale(0.97); }
 }
 
 /* ─── Focus ─────────────────────────────────────────────────────────────── */
@@ -92,8 +82,7 @@ body::before {
 input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px rgba(139,125,244,0.18) !important;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.12) !important;
 }
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
@@ -108,15 +97,15 @@ button {
 }
 
 /* ─── Status chip colours ────────────────────────────────────────────────── */
-.chip-present         { background: rgba(82,201,139,0.14); color: #62d99d; }
-.chip-absent          { background: rgba(240,107,107,0.14); color: #f47878; }
-.chip-week-off        { background: rgba(139,125,244,0.14); color: #a89ef6; }
-.chip-half            { background: rgba(224,158,80,0.14);  color: #e8ab5a; }
-.chip-sick-leave      { background: rgba(240,160,80,0.14);  color: #f0a060; }
-.chip-planned-leave   { background: rgba(96,176,244,0.14);  color: #70bff6; }
-.chip-unplanned-leave { background: rgba(240,107,107,0.14); color: #f47878; }
-.chip-holiday         { background: rgba(96,208,244,0.12);  color: #60d0f4; }
-.chip-leave           { background: rgba(180,100,240,0.12); color: #c07af0; }
+.chip-present         { background: #d4f0df; color: #1f9e5e; }
+.chip-absent          { background: #fde2e2; color: #d93030; }
+.chip-week-off        { background: #e8e4ff; color: #5b3fc8; }
+.chip-half            { background: #fff3cc; color: #9b6c00; }
+.chip-sick-leave      { background: #ffe4cc; color: #c97a00; }
+.chip-planned-leave   { background: #cce8ff; color: #0068c9; }
+.chip-unplanned-leave { background: #fde2e2; color: #d93030; }
+.chip-holiday         { background: #e0f4ff; color: #0099cc; }
+.chip-leave           { background: #f0e0ff; color: #7a00cc; }
 
 /* ─── Skeleton shimmer ───────────────────────────────────────────────────── */
 @keyframes shimmer {
@@ -126,7 +115,7 @@ button {
 .skeleton {
   background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
   background-size: 600px 100%;
-  animation: shimmer 1.6s ease infinite;
+  animation: shimmer 1.5s ease infinite;
   border-radius: 4px;
 }
 
@@ -151,16 +140,16 @@ button {
 .remarks-area.hidden { max-height: 0;    opacity: 0; }
 .remarks-area.shown  { max-height: 140px; opacity: 1; }
 
-/* ─── Row pulse ──────────────────────────────────────────────────────────── */
+/* ─── Row pulse on status change ────────────────────────────────────────── */
 @keyframes rowPulse {
-  0%   { background: rgba(139,125,244,0.18); }
+  0%   { background: rgba(79,70,229,0.12); }
   100% { background: transparent; }
 }
 .row-pulse { animation: rowPulse 0.55s ease-out; }
 
 /* ─── Entrance animations ────────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes fadeInFast {
@@ -168,63 +157,54 @@ button {
   to   { opacity: 1; }
 }
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(22px); }
+  from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes slideIn {
-  from { opacity: 0; transform: translateX(28px); }
+  from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.93); }
+  from { opacity: 0; transform: scale(0.95); }
   to   { opacity: 1; transform: scale(1); }
 }
-@keyframes floatUp {
-  0%,100% { transform: translateY(0px); }
-  50%     { transform: translateY(-8px); }
-}
 
-.animate-fade-in  { animation: fadeIn  0.24s cubic-bezier(.4,0,.2,1) both; }
-.animate-slide-up { animation: slideUp 0.28s cubic-bezier(.4,0,.2,1) both; }
-.animate-slide-in { animation: slideIn 0.24s cubic-bezier(.4,0,.2,1) both; }
-.animate-scale-in { animation: scaleIn 0.22s cubic-bezier(.4,0,.2,1) both; }
-.animate-float    { animation: floatUp 4s ease-in-out infinite; }
+.animate-fade-in  { animation: fadeIn  0.22s cubic-bezier(.4,0,.2,1) both; }
+.animate-slide-up { animation: slideUp 0.26s cubic-bezier(.4,0,.2,1) both; }
+.animate-slide-in { animation: slideIn 0.22s cubic-bezier(.4,0,.2,1) both; }
+.animate-scale-in { animation: scaleIn 0.20s cubic-bezier(.4,0,.2,1) both; }
 
 /* ─── Staggered children ─────────────────────────────────────────────────── */
-.stagger > * { animation: fadeIn 0.3s cubic-bezier(.4,0,.2,1) both; }
+.stagger > * { animation: fadeIn 0.28s cubic-bezier(.4,0,.2,1) both; }
 .stagger > *:nth-child(1) { animation-delay:  0ms; }
-.stagger > *:nth-child(2) { animation-delay: 50ms; }
-.stagger > *:nth-child(3) { animation-delay:100ms; }
-.stagger > *:nth-child(4) { animation-delay:150ms; }
-.stagger > *:nth-child(5) { animation-delay:200ms; }
-.stagger > *:nth-child(n+6) { animation-delay:250ms; }
+.stagger > *:nth-child(2) { animation-delay: 45ms; }
+.stagger > *:nth-child(3) { animation-delay: 90ms; }
+.stagger > *:nth-child(4) { animation-delay:135ms; }
+.stagger > *:nth-child(5) { animation-delay:180ms; }
+.stagger > *:nth-child(n+6) { animation-delay:220ms; }
 
 /* ─── Hover utilities ────────────────────────────────────────────────────── */
-.hover-row {
-  transition: background 0.12s ease;
-}
-.hover-row:hover {
-  background: rgba(139,125,244,0.07) !important;
-}
+.hover-row { transition: background 0.11s ease; }
+.hover-row:hover { background: var(--surface2) !important; }
 
 .card-hover {
-  transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 .card-hover:hover {
-  box-shadow: var(--shadow-md), 0 0 0 1px var(--border2);
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .glow-hover { transition: box-shadow 0.2s ease; }
-.glow-hover:hover { box-shadow: 0 0 24px var(--accent-glow); }
+.glow-hover:hover { box-shadow: 0 0 0 3px var(--accent-glow); }
 
 /* ─── Modal ──────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 9, 18, 0.78);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(10,10,20,0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -236,14 +216,14 @@ button {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 18px;
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(139,125,244,0.08);
+  box-shadow: var(--shadow-lg);
   animation: scaleIn 0.22s cubic-bezier(.4,0,.2,1);
   max-height: 90vh;
   overflow-y: auto;
   width: 100%;
 }
 
-/* ─── Badge / pill ───────────────────────────────────────────────────────── */
+/* ─── Badge ──────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;

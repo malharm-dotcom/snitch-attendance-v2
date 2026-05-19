@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,18 +10,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = request.nextUrl;
-    const status = searchParams.get('status'); // optional: 'pending' | 'approved' | 'rejected'
+    const status = searchParams.get('status');
 
-    const facility = session.facility;
-    const south = isSouth(facility);
-
-    const facilityFilter = south
-      ? { in: ['WH1', 'WH2'] }
-      : { equals: facility };
-
+    // Each facility sees only its own requests
     const requests = await prisma.attendanceRewriteRequest.findMany({
       where: {
-        facility: facilityFilter,
+        facility: session.facility,
         ...(status ? { requestStatus: status } : {}),
       },
       orderBy: { requestedAt: 'desc' },

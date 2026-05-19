@@ -82,8 +82,8 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
         className="hidden md:flex"
         style={{
           width: '44%',
-          background: 'linear-gradient(160deg, #1a1c32 0%, #0d0e18 100%)',
-          borderRight: '1px solid var(--border)',
+          background: 'linear-gradient(160deg, #0f172a 0%, #1e1b4b 100%)',
+          borderRight: '1px solid #2d2d4e',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
@@ -135,7 +135,7 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
         </div>
 
         <h1 style={{
-          color: 'var(--text)',
+          color: '#f1f5f9',
           fontFamily: 'var(--display)',
           fontWeight: 800,
           fontSize: 46,
@@ -149,7 +149,7 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
         </h1>
 
         <p style={{
-          color: 'var(--text-3)',
+          color: 'rgba(255,255,255,0.38)',
           fontFamily: 'var(--mono)',
           fontSize: 13,
           margin: 0,
