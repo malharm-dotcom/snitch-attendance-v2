@@ -150,7 +150,7 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
             margin: '0 0 32px',
             lineHeight: 1.5,
           }}>
-            Use your employee code and password to access the system.
+            Enter your employee code or name, and your PIN as the password.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -165,14 +165,14 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
                 letterSpacing: '0.07em',
                 fontWeight: 500,
               }}>
-                Employee Code
+                Employee Code / Name
               </label>
               <input
                 type="text"
                 value={employeeCode}
                 onChange={(e) => setEmployeeCode(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
-                placeholder="e.g. SAPL00264"
+                placeholder="e.g. SAPL00264 or your name"
                 autoComplete="username"
                 autoCapitalize="characters"
                 style={{

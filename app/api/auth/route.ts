@@ -17,15 +17,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Employee code and password are required' }, { status: 400 });
     }
 
-    const supervisor = await prisma.supervisor.findFirst({
-      where: { employeeCode: employee_code, isActive: true },
-    });
+    const input = employee_code.trim();
 
-    if (!supervisor) {
-      return NextResponse.json({ error: 'Invalid employee code or password' }, { status: 401 });
+    // Try employee_code first; if that column doesn't exist yet fall back to name lookup
+    let supervisor = null;
+    try {
+      supervisor = await prisma.supervisor.findFirst({
+        where: {
+          OR: [
+            { employeeCode: input },
+            { supervisorName: { equals: input, mode: 'insensitive' } },
+          ],
+          isActive: true,
+        },
+      });
+    } catch {
+      // employee_code column not yet migrated — find by name only
+      supervisor = await prisma.supervisor.findFirst({
+        where: { supervisorName: { equals: input, mode: 'insensitive' }, isActive: true },
+      });
     }
 
-    // If no password_hash yet (pre-migration), accept the PIN as fallback
+    // Also try case-insensitive contains if exact match found nothing (e.g. "Malhar" vs "MALHAR M")
+    if (!supervisor) {
+      try {
+        supervisor = await prisma.supervisor.findFirst({
+          where: {
+            OR: [
+              { employeeCode: input },
+              { supervisorName: { contains: input, mode: 'insensitive' } },
+            ],
+            isActive: true,
+          },
+        });
+      } catch {
+        supervisor = await prisma.supervisor.findFirst({
+          where: { supervisorName: { contains: input, mode: 'insensitive' }, isActive: true },
+        });
+      }
+    }
+
+    if (!supervisor) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
+
+    // Password check: bcrypt hash → then PIN fallback (pre-migration)
     let valid = false;
     if (supervisor.passwordHash) {
       valid = await bcrypt.compare(password, supervisor.passwordHash);
