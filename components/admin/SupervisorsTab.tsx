@@ -78,6 +78,7 @@ export default function SupervisorsTab() {
   const [supervisors, setSupervisors] = useState<SupervisorRow[]>([]);
   const [currentUser, setCurrentUser] = useState('');
   const [currentFacility, setCurrentFacility] = useState('');
+  const [isSouthAdmin, setIsSouthAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [saving, setSaving] = useState(false);
@@ -95,6 +96,7 @@ export default function SupervisorsTab() {
       setSupervisors(data.supervisors ?? []);
       setCurrentUser(data.currentUser ?? '');
       setCurrentFacility(data.currentFacility ?? '');
+      setIsSouthAdmin(data.isSouthAdmin ?? false);
     } catch {
       showToast('Failed to load supervisors', 'error');
     } finally {
@@ -236,12 +238,13 @@ export default function SupervisorsTab() {
     );
   }
 
-  function FormPanel({ form, setter, title, onSave, onCancel }: {
+  function FormPanel({ form, setter, title, onSave, onCancel, allowFacilityChange }: {
     form: EditForm;
     setter: (f: EditForm) => void;
     title: string;
     onSave: () => void;
     onCancel: () => void;
+    allowFacilityChange?: boolean;
   }) {
     return (
       <div style={{
@@ -273,9 +276,13 @@ export default function SupervisorsTab() {
               <input value={form.employeeCode} onChange={(e) => setter({ ...form, employeeCode: e.target.value })} placeholder="e.g. SAPL00264" style={inputStyle} onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }} onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }} />
             </Field>
             <Field label="Facility">
-              <select value={form.facility} onChange={(e) => setter({ ...form, facility: e.target.value })} style={{ ...inputStyle }}>
-                {FACILITIES.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
+              {allowFacilityChange ? (
+                <select value={form.facility} onChange={(e) => setter({ ...form, facility: e.target.value })} style={{ ...inputStyle, color: 'var(--text)' }}>
+                  {(['WH1', 'WH2'] as string[]).map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              ) : (
+                <div style={{ ...inputStyle, background: 'var(--surface2)', color: 'var(--text-2)', cursor: 'default' }}>{form.facility}</div>
+              )}
             </Field>
             <Field label="Role">
               <select value={form.role} onChange={(e) => setter({ ...form, role: e.target.value })} style={{ ...inputStyle }}>
@@ -343,7 +350,7 @@ export default function SupervisorsTab() {
             <option value="">All roles</option>
             {ROLES.map((r) => <option key={r} value={r} style={{ textTransform: 'capitalize' }}>{r}</option>)}
           </select>
-          <button onClick={() => { setAddForm({ ...emptyForm(), facility: currentFacility }); setShowAdd(true); }} style={{ padding: '7px 16px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          <button onClick={() => { setAddForm({ ...emptyForm(), facility: currentFacility }); setShowAdd(true); }} style={{ padding: '7px 16px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-d)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent)'; }}>
             + Add
           </button>
         </div>
@@ -434,6 +441,7 @@ export default function SupervisorsTab() {
           title="Add Supervisor"
           onSave={saveAdd}
           onCancel={() => setShowAdd(false)}
+          allowFacilityChange={isSouthAdmin}
         />
       )}
     </div>

@@ -19,6 +19,16 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Snitch Attendance',
   description: 'Warehouse Attendance Management System',
+  icons: {
+    icon: [
+      {
+        url: 'https://www.snitch.co.in/cdn/shop/files/SNITCH_LOGO_NEW_BLACK.png?v=1721457834',
+        type: 'image/png',
+      },
+    ],
+    shortcut: 'https://www.snitch.co.in/cdn/shop/files/SNITCH_LOGO_NEW_BLACK.png?v=1721457834',
+    apple: 'https://www.snitch.co.in/cdn/shop/files/SNITCH_LOGO_NEW_BLACK.png?v=1721457834',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

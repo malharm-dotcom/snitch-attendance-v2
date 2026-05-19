@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import EmployeeRow, { type EmployeeEntry } from './EmployeeRow';
 import ProgressBar from './ProgressBar';
 import SummaryBar from './SummaryBar';
@@ -29,6 +29,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
   const [date, setDate] = useState(today);
   const [employees, setEmployees] = useState<EmployeeEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const prevShiftRef = useRef(shift);
   const [checkStatus, setCheckStatus] = useState<CheckStatus | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -67,6 +68,16 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
       setLoading(false);
     }
   }
+
+  // Auto-reload when shift changes if employees are already on screen
+  useEffect(() => {
+    if (prevShiftRef.current !== shift && employees.length > 0) {
+      loadEmployees();
+    }
+    prevShiftRef.current = shift;
+  // loadEmployees intentionally omitted — it's stable per render, shift is the trigger
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shift]);
 
   const updateEmployee = useCallback((code: string, field: 'attendance_status' | 'remarks', value: string) => {
     setEmployees((prev) =>

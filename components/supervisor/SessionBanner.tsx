@@ -27,10 +27,6 @@ export default function SessionBanner({
 }: SessionBannerProps) {
   function handleShift(s: 'Day' | 'Night') {
     if (s === shift) return;
-    if (employeesLoaded) {
-      const ok = window.confirm('Switching shift will clear the current employee list. Continue?');
-      if (!ok) return;
-    }
     onShiftChange(s);
   }
 
