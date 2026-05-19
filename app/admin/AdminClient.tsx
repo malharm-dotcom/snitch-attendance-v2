@@ -13,8 +13,9 @@ import ManagerMatrix from '@/components/manager/ManagerMatrix';
 import BulkUploadTab from '@/components/manager/BulkUploadTab';
 import ReportsTab from '@/components/manager/ReportsTab';
 import OfflineBanner from '@/components/shared/OfflineBanner';
+import SupervisorsTab from '@/components/admin/SupervisorsTab';
 
-type Tab = 'mark' | 'history' | 'pending' | 'resolved' | 'log' | 'employees' | 'reports';
+type Tab = 'mark' | 'history' | 'pending' | 'resolved' | 'log' | 'employees' | 'reports' | 'supervisors';
 
 interface Props {
   supervisorName: string;
@@ -42,6 +43,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
     { id: 'log', label: 'Attendance Log' },
     { id: 'employees', label: 'Employees' },
     { id: 'reports', label: 'Reports' },
+    { id: 'supervisors', label: 'Supervisors' },
   ];
 
   const loadRequests = useCallback(async (status?: string) => {
@@ -190,6 +192,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
         )}
         {activeTab === 'employees' && <BulkUploadTab />}
         {activeTab === 'reports' && <ReportsTab facility={facility} />}
+        {activeTab === 'supervisors' && <SupervisorsTab />}
       </main>
     </>
   );

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import NameDropdown from './NameDropdown';
-import PinInput from './PinInput';
+import PasswordInput from './PasswordInput';
 import { useToast } from '../shared/Toast';
 
 interface LoginScreenProps {
@@ -11,10 +10,8 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
-  const [role, setRole] = useState<'supervisor' | 'manager'>('supervisor');
-  const [names, setNames] = useState<string[]>([]);
-  const [selectedName, setSelectedName] = useState('');
-  const [pin, setPin] = useState('');
+  const [employeeCode, setEmployeeCode] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -24,20 +21,9 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
     if (sessionExpired) showToast('Session expired — please log in again', 'info');
   }, [sessionExpired, showToast]);
 
-  useEffect(() => {
-    setSelectedName('');
-    setPin('');
-    setError('');
-    const q = role === 'manager' ? '?role=manager' : '';
-    fetch(`/api/supervisors${q}`)
-      .then((r) => r.json())
-      .then((d) => setNames(d.supervisors ?? []))
-      .catch(() => setNames([]));
-  }, [role]);
-
   async function handleLogin() {
-    if (!selectedName) { setError('Please select your name'); return; }
-    if (!pin) { setError('Please enter your PIN'); return; }
+    if (!employeeCode.trim()) { setError('Please enter your employee code'); return; }
+    if (!password) { setError('Please enter your password'); return; }
     setError('');
     setLoading(true);
 
@@ -45,7 +31,7 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supervisor_name: selectedName, pin }),
+        body: JSON.stringify({ employee_code: employeeCode.trim(), password }),
       });
       const data = await res.json();
 
@@ -54,8 +40,8 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
         return;
       }
 
-      if (data.role === 'manager') router.push('/manager');
-      else if (data.role === 'admin') router.push('/admin');
+      if (data.role === 'admin') router.push('/admin');
+      else if (data.role === 'manager') router.push('/manager');
       else router.push('/supervisor');
     } catch {
       setError('Network error — please try again');
@@ -65,32 +51,29 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      background: 'var(--bg)',
-    }}>
-      {/* Brand panel */}
-      <div style={{
-        width: '45%',
-        background: 'var(--text)',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        padding: '48px 56px',
-        gap: 16,
-      }}
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg)' }}>
+      {/* Brand panel — hidden on mobile */}
+      <div
         className="hidden md:flex"
+        style={{
+          width: '45%',
+          background: 'var(--text)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          padding: '48px 56px',
+          gap: 20,
+        }}
       >
         <div style={{
           background: 'var(--accent)',
           color: 'var(--accent-text)',
-          borderRadius: 10,
-          padding: '8px 14px',
+          borderRadius: 8,
+          padding: '7px 14px',
           fontFamily: 'var(--mono)',
           fontSize: 11,
-          fontWeight: 500,
+          fontWeight: 600,
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
         }}>
@@ -100,22 +83,28 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
           color: '#fff',
           fontFamily: 'var(--display)',
           fontWeight: 800,
-          fontSize: 42,
-          lineHeight: 1.1,
+          fontSize: 44,
+          lineHeight: 1.05,
           margin: 0,
         }}>
           Attendance<br />Management
         </h1>
         <p style={{
-          color: 'rgba(255,255,255,0.5)',
+          color: 'rgba(255,255,255,0.45)',
           fontFamily: 'var(--mono)',
           fontSize: 13,
           margin: 0,
-          lineHeight: 1.6,
+          lineHeight: 1.7,
         }}>
-          Daily attendance tracking<br />
-          for warehouse operations.
+          Daily attendance tracking<br />for warehouse operations.
         </p>
+
+        {/* Decorative dots */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.2)' }} />
+          ))}
+        </div>
       </div>
 
       {/* Form panel */}
@@ -127,69 +116,96 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
         padding: '40px 24px',
       }}>
         <div style={{ width: '100%', maxWidth: 380 }}>
+          {/* Mobile brand label */}
+          <div className="flex md:hidden" style={{
+            display: 'none',
+            background: 'var(--accent)',
+            color: 'var(--accent-text)',
+            borderRadius: 8,
+            padding: '6px 12px',
+            fontFamily: 'var(--mono)',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            width: 'fit-content',
+            marginBottom: 20,
+          }}>
+            Snitch Warehouse
+          </div>
+
           <h2 style={{
             fontFamily: 'var(--display)',
             fontWeight: 800,
-            fontSize: 26,
+            fontSize: 28,
             margin: '0 0 8px',
+            color: 'var(--text)',
           }}>
             Sign in
           </h2>
-          <p style={{ color: 'var(--text-2)', fontFamily: 'var(--mono)', fontSize: 13, margin: '0 0 28px' }}>
-            Use your name and PIN to access the system
+          <p style={{
+            color: 'var(--text-2)',
+            fontFamily: 'var(--mono)',
+            fontSize: 13,
+            margin: '0 0 32px',
+            lineHeight: 1.5,
+          }}>
+            Use your employee code and password to access the system.
           </p>
 
-          {/* Role toggle */}
-          <div style={{
-            display: 'flex',
-            background: 'var(--surface2)',
-            borderRadius: 'var(--r)',
-            padding: 3,
-            marginBottom: 24,
-          }}>
-            {(['supervisor', 'manager'] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRole(r)}
-                style={{
-                  flex: 1,
-                  padding: '8px 0',
-                  border: 'none',
-                  borderRadius: 8,
-                  fontFamily: 'var(--display)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: role === r ? 'var(--surface)' : 'transparent',
-                  color: role === r ? 'var(--text)' : 'var(--text-2)',
-                  boxShadow: role === r ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.15s',
-                  textTransform: 'capitalize',
-                }}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                Name
+              <label style={{
+                display: 'block',
+                fontFamily: 'var(--mono)',
+                fontSize: 11,
+                color: 'var(--text-2)',
+                marginBottom: 6,
+                textTransform: 'uppercase',
+                letterSpacing: '0.07em',
+                fontWeight: 500,
+              }}>
+                Employee Code
               </label>
-              <NameDropdown
-                names={names}
-                value={selectedName}
-                onChange={setSelectedName}
-                placeholder="Search your name..."
+              <input
+                type="text"
+                value={employeeCode}
+                onChange={(e) => setEmployeeCode(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
+                placeholder="e.g. SAPL00264"
+                autoComplete="username"
+                autoCapitalize="characters"
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: 'var(--r)',
+                  fontFamily: 'var(--mono)',
+                  fontSize: 15,
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  transition: 'border-color 0.15s',
+                }}
+                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
+                onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                PIN
+              <label style={{
+                display: 'block',
+                fontFamily: 'var(--mono)',
+                fontSize: 11,
+                color: 'var(--text-2)',
+                marginBottom: 6,
+                textTransform: 'uppercase',
+                letterSpacing: '0.07em',
+                fontWeight: 500,
+              }}>
+                Password
               </label>
-              <PinInput value={pin} onChange={setPin} onSubmit={handleLogin} />
+              <PasswordInput value={password} onChange={setPassword} onSubmit={handleLogin} />
             </div>
 
             {error && (
@@ -200,6 +216,8 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
                 borderRadius: 8,
                 fontFamily: 'var(--mono)',
                 fontSize: 13,
+                lineHeight: 1.4,
+                animation: 'fadeIn 0.15s ease',
               }}>
                 {error}
               </div>
@@ -219,9 +237,13 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
                 fontSize: 15,
                 fontWeight: 700,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'background 0.15s',
+                transition: 'background 0.15s, transform 0.1s',
                 marginTop: 4,
               }}
+              onMouseEnter={(e) => { if (!loading) (e.target as HTMLElement).style.background = 'var(--accent-d)'; }}
+              onMouseLeave={(e) => { if (!loading) (e.target as HTMLElement).style.background = 'var(--accent)'; }}
+              onMouseDown={(e) => { if (!loading) (e.target as HTMLElement).style.transform = 'scale(0.99)'; }}
+              onMouseUp={(e) => { (e.target as HTMLElement).style.transform = 'scale(1)'; }}
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>

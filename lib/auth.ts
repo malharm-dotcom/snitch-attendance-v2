@@ -13,8 +13,10 @@ export interface SessionData {
 export async function getSession(): Promise<IronSession<SessionData>> {
   const secret = process.env.SESSION_SECRET;
   console.log('SESSION_SECRET set:', !!secret);
-  if (!secret) {
-    throw new Error('SESSION_SECRET environment variable is not set. Cannot create session.');
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      `SESSION_SECRET must be at least 32 characters (got ${secret?.length ?? 0}). Set it in your environment variables.`
+    );
   }
   const session = await getIronSession<SessionData>(cookies(), {
     password: secret,

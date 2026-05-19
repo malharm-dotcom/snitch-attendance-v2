@@ -10,10 +10,12 @@ datasource db {
 model Supervisor {
   id             Int      @id @default(autoincrement())
   supervisorName String   @map("supervisor_name") @db.VarChar(200)
+  employeeCode   String?  @unique @map("employee_code") @db.VarChar(50)
   facility       String   @db.VarChar(50)
   department     String   @db.VarChar(100)
   departments    String[]
   pin            String   @db.VarChar(10)
+  passwordHash   String?  @map("password_hash") @db.Text
   role           String   @default("supervisor") @db.VarChar(20)
   isActive       Boolean  @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at")

@@ -44,7 +44,16 @@ export async function GET(request: NextRequest) {
       orderBy: [{ department: 'asc' }, { employeeName: 'asc' }],
     });
 
-    return NextResponse.json({ employees });
+    return NextResponse.json({
+      employees: employees.map((e) => ({
+        id: e.id,
+        employee_code: e.employeeCode,
+        employee_name: e.employeeName,
+        facility: e.facility,
+        department: e.department,
+        shift: e.shift,
+      })),
+    });
   } catch (error) {
     console.error('GET /api/employees error:', error);
     return NextResponse.json({ error: 'Failed to fetch employees' }, { status: 500 });
