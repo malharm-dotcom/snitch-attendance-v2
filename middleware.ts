@@ -2,15 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import type { SessionData } from '@/lib/auth';
 
-const sessionOptions = {
-  password: process.env.SESSION_SECRET as string,
-  cookieName: 'snitch_session',
-  cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-  },
-};
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -18,6 +9,21 @@ export async function middleware(request: NextRequest) {
   if (!protectedRoutes.some((r) => pathname.startsWith(r))) {
     return NextResponse.next();
   }
+
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    console.error('SESSION_SECRET environment variable is not set');
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  const sessionOptions = {
+    password: secret,
+    cookieName: 'snitch_session',
+    cookieOptions: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+    },
+  };
 
   const response = NextResponse.next();
   const session = await getIronSession<SessionData>(request, response, sessionOptions);

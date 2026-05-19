@@ -10,18 +10,21 @@ export interface SessionData {
   isLoggedIn: boolean;
 }
 
-export const sessionOptions = {
-  password: process.env.SESSION_SECRET as string,
-  cookieName: 'snitch_session',
-  cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 60 * 60 * 12, // 12 hours
-  },
-};
-
 export async function getSession(): Promise<IronSession<SessionData>> {
-  const session = await getIronSession<SessionData>(cookies(), sessionOptions);
+  const secret = process.env.SESSION_SECRET;
+  console.log('SESSION_SECRET set:', !!secret);
+  if (!secret) {
+    throw new Error('SESSION_SECRET environment variable is not set. Cannot create session.');
+  }
+  const session = await getIronSession<SessionData>(cookies(), {
+    password: secret,
+    cookieName: 'snitch_session',
+    cookieOptions: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 60 * 60 * 12,
+    },
+  });
   return session;
 }
 
