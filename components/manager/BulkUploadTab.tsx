@@ -30,7 +30,7 @@ const EXAMPLE_ROW: EmployeeRow = {
   shift: 'Day',               // Day | Night
   designation: 'Executive',
   reporting_manager: 'Manager Name',
-  roll_type: 'Permanent',
+  roll_type: 'On-Roll',             // On-Roll | Off-Roll
   gender: 'Male',             // Male | Female | Other
 };
 
@@ -176,6 +176,7 @@ export default function BulkUploadTab() {
         department: <code>B2C Forward | B2C Return | B2B Forward | B2B Return | Inventory | Inward | Ops | Logistics | Admin</code> &nbsp;·&nbsp;
         is_active: <code>TRUE | FALSE</code> &nbsp;·&nbsp;
         shift: <code>Day | Night</code> &nbsp;·&nbsp;
+        roll_type: <code>On-Roll | Off-Roll</code> &nbsp;·&nbsp;
         gender: <code>Male | Female | Other</code>
       </div>
 
