@@ -23,7 +23,9 @@ export default function Topbar({ name, role }: TopbarProps) {
 
   return (
     <header style={{
-      background: 'var(--surface)',
+      background: 'rgba(22, 24, 41, 0.82)',
+      backdropFilter: 'blur(14px)',
+      WebkitBackdropFilter: 'blur(14px)',
       borderBottom: '1px solid var(--border)',
       padding: '0 20px',
       height: 52,

@@ -22,7 +22,7 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
   }, [sessionExpired, showToast]);
 
   async function handleLogin() {
-    if (!employeeCode.trim()) { setError('Please enter your employee code'); return; }
+    if (!employeeCode.trim()) { setError('Please enter your employee code or name'); return; }
     if (!password) { setError('Please enter your password'); return; }
     setError('');
     setLoading(true);
@@ -50,59 +50,133 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
     }
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '12px 14px',
+    border: '1.5px solid var(--border)',
+    borderRadius: 'var(--r)',
+    fontFamily: 'var(--mono)',
+    fontSize: 14,
+    background: 'var(--surface2)',
+    color: 'var(--text)',
+    outline: 'none',
+    transition: 'border-color 0.18s, box-shadow 0.18s',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontFamily: 'var(--mono)',
+    fontSize: 11,
+    color: 'var(--text-3)',
+    marginBottom: 7,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    fontWeight: 600,
+  };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg)' }}>
-      {/* Brand panel — hidden on mobile */}
+
+      {/* Brand panel */}
       <div
         className="hidden md:flex"
         style={{
-          width: '45%',
-          background: 'var(--text)',
+          width: '44%',
+          background: 'linear-gradient(160deg, #1a1c32 0%, #0d0e18 100%)',
+          borderRight: '1px solid var(--border)',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'flex-start',
-          padding: '48px 56px',
-          gap: 20,
+          padding: '56px 60px',
+          gap: 22,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
+        {/* Ambient glow blob */}
+        <div style={{
+          position: 'absolute',
+          top: '-80px',
+          left: '-80px',
+          width: 340,
+          height: 340,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(139,125,244,0.14) 0%, transparent 70%)',
+          pointerEvents: 'none',
+          animation: 'auraShift 16s ease-in-out infinite',
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: '-60px',
+          right: '-40px',
+          width: 240,
+          height: 240,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(82,201,139,0.07) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Badge */}
         <div style={{
           background: 'var(--accent)',
           color: 'var(--accent-text)',
           borderRadius: 8,
-          padding: '7px 14px',
+          padding: '6px 14px',
           fontFamily: 'var(--mono)',
           fontSize: 11,
           fontWeight: 600,
-          letterSpacing: '0.1em',
+          letterSpacing: '0.12em',
           textTransform: 'uppercase',
+          position: 'relative',
+          animation: 'fadeIn 0.5s ease both',
         }}>
           Snitch Warehouse
         </div>
+
         <h1 style={{
-          color: '#fff',
+          color: 'var(--text)',
           fontFamily: 'var(--display)',
           fontWeight: 800,
-          fontSize: 44,
-          lineHeight: 1.05,
+          fontSize: 46,
+          lineHeight: 1.06,
           margin: 0,
+          letterSpacing: '-0.5px',
+          position: 'relative',
+          animation: 'fadeIn 0.6s 0.1s ease both',
         }}>
           Attendance<br />Management
         </h1>
+
         <p style={{
-          color: 'rgba(255,255,255,0.45)',
+          color: 'var(--text-3)',
           fontFamily: 'var(--mono)',
           fontSize: 13,
           margin: 0,
-          lineHeight: 1.7,
+          lineHeight: 1.75,
+          position: 'relative',
+          animation: 'fadeIn 0.6s 0.2s ease both',
         }}>
           Daily attendance tracking<br />for warehouse operations.
         </p>
 
-        {/* Decorative dots */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
-          {[1, 2, 3].map((i) => (
-            <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.2)' }} />
+        {/* Decorative line */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          marginTop: 20,
+          position: 'relative',
+          animation: 'fadeIn 0.6s 0.3s ease both',
+        }}>
+          {[100, 60, 35].map((w, i) => (
+            <div key={i} style={{
+              width: w,
+              height: 2,
+              borderRadius: 2,
+              background: i === 0 ? 'var(--accent)' : 'var(--border)',
+              transition: 'width 0.3s ease',
+            }} />
           ))}
         </div>
       </div>
@@ -114,22 +188,24 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '40px 24px',
+        position: 'relative',
       }}>
-        <div style={{ width: '100%', maxWidth: 380 }}>
+        <div style={{ width: '100%', maxWidth: 360, animation: 'slideUp 0.4s 0.05s ease both' }}>
+
           {/* Mobile brand label */}
           <div className="flex md:hidden" style={{
             display: 'none',
             background: 'var(--accent)',
             color: 'var(--accent-text)',
             borderRadius: 8,
-            padding: '6px 12px',
+            padding: '5px 12px',
             fontFamily: 'var(--mono)',
             fontSize: 11,
             fontWeight: 600,
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
             width: 'fit-content',
-            marginBottom: 20,
+            marginBottom: 24,
           }}>
             Snitch Warehouse
           </div>
@@ -137,87 +213,61 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
           <h2 style={{
             fontFamily: 'var(--display)',
             fontWeight: 800,
-            fontSize: 28,
-            margin: '0 0 8px',
+            fontSize: 30,
+            margin: '0 0 6px',
             color: 'var(--text)',
+            letterSpacing: '-0.3px',
           }}>
             Sign in
           </h2>
           <p style={{
-            color: 'var(--text-2)',
+            color: 'var(--text-3)',
             fontFamily: 'var(--mono)',
-            fontSize: 13,
+            fontSize: 12,
             margin: '0 0 32px',
-            lineHeight: 1.5,
+            lineHeight: 1.6,
           }}>
-            Enter your employee code or name, and your PIN as the password.
+            Employee code or name · Password / PIN
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
-              <label style={{
-                display: 'block',
-                fontFamily: 'var(--mono)',
-                fontSize: 11,
-                color: 'var(--text-2)',
-                marginBottom: 6,
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em',
-                fontWeight: 500,
-              }}>
-                Employee Code / Name
-              </label>
+              <label style={labelStyle}>Employee Code / Name</label>
               <input
                 type="text"
                 value={employeeCode}
                 onChange={(e) => setEmployeeCode(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
-                placeholder="e.g. SAPL00264 or your name"
+                placeholder="SAPL00264 or your name"
                 autoComplete="username"
-                autoCapitalize="characters"
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  border: '1.5px solid var(--border)',
-                  borderRadius: 'var(--r)',
-                  fontFamily: 'var(--mono)',
-                  fontSize: 15,
-                  background: 'var(--surface)',
-                  color: 'var(--text)',
-                  outline: 'none',
-                  transition: 'border-color 0.15s',
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'var(--accent)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(139,125,244,0.15)';
                 }}
-                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
-                onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--border)';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
             </div>
 
             <div>
-              <label style={{
-                display: 'block',
-                fontFamily: 'var(--mono)',
-                fontSize: 11,
-                color: 'var(--text-2)',
-                marginBottom: 6,
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em',
-                fontWeight: 500,
-              }}>
-                Password
-              </label>
+              <label style={labelStyle}>Password / PIN</label>
               <PasswordInput value={password} onChange={setPassword} onSubmit={handleLogin} />
             </div>
 
             {error && (
               <div style={{
-                background: '#fde2e2',
+                background: 'var(--danger-bg)',
+                border: '1px solid rgba(240,107,107,0.25)',
                 color: 'var(--danger)',
                 padding: '10px 14px',
-                borderRadius: 8,
+                borderRadius: 'var(--r)',
                 fontFamily: 'var(--mono)',
-                fontSize: 13,
-                lineHeight: 1.4,
-                animation: 'fadeIn 0.15s ease',
+                fontSize: 12,
+                lineHeight: 1.5,
+                animation: 'fadeIn 0.18s ease',
               }}>
                 {error}
               </div>
@@ -237,15 +287,24 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
                 fontSize: 15,
                 fontWeight: 700,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'background 0.15s, transform 0.1s',
+                letterSpacing: '0.01em',
                 marginTop: 4,
+                transition: 'background 0.18s, transform 0.1s, box-shadow 0.18s',
               }}
-              onMouseEnter={(e) => { if (!loading) (e.target as HTMLElement).style.background = 'var(--accent-d)'; }}
-              onMouseLeave={(e) => { if (!loading) (e.target as HTMLElement).style.background = 'var(--accent)'; }}
-              onMouseDown={(e) => { if (!loading) (e.target as HTMLElement).style.transform = 'scale(0.99)'; }}
-              onMouseUp={(e) => { (e.target as HTMLElement).style.transform = 'scale(1)'; }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  (e.currentTarget).style.background = 'var(--accent-d)';
+                  (e.currentTarget).style.boxShadow = '0 0 28px rgba(139,125,244,0.35)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget).style.background = loading ? 'var(--surface2)' : 'var(--accent)';
+                (e.currentTarget).style.boxShadow = 'none';
+              }}
+              onMouseDown={(e) => { if (!loading) (e.currentTarget).style.transform = 'scale(0.985)'; }}
+              onMouseUp={(e) => { (e.currentTarget).style.transform = 'scale(1)'; }}
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </div>
         </div>

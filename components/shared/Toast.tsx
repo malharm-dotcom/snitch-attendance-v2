@@ -56,13 +56,13 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     info: 'ℹ',
   };
 
-  const colors: Record<ToastType, { bg: string; color: string }> = {
-    success: { bg: 'var(--success)', color: '#fff' },
-    error: { bg: 'var(--danger)', color: '#fff' },
-    info: { bg: 'var(--text)', color: '#fff' },
+  const colors: Record<ToastType, { bg: string; color: string; border: string }> = {
+    success: { bg: 'var(--success-bg)', color: 'var(--success)', border: 'rgba(82,201,139,0.3)' },
+    error:   { bg: 'var(--danger-bg)',  color: 'var(--danger)',  border: 'rgba(240,107,107,0.3)' },
+    info:    { bg: 'var(--surface2)',   color: 'var(--text)',    border: 'var(--border2)' },
   };
 
-  const { bg, color } = colors[toast.type];
+  const { bg, color, border } = colors[toast.type];
 
   return (
     <div
@@ -73,17 +73,19 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         gap: 10,
         background: bg,
         color,
-        padding: '10px 16px',
+        border: `1px solid ${border}`,
+        padding: '11px 16px',
         borderRadius: 'var(--r)',
         fontFamily: 'var(--mono)',
         fontSize: 13,
         cursor: 'pointer',
         minWidth: 240,
         maxWidth: 380,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+        backdropFilter: 'blur(8px)',
         opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(16px)',
-        transition: 'opacity 0.2s, transform 0.2s',
+        transform: visible ? 'translateX(0)' : 'translateX(20px)',
+        transition: 'opacity 0.22s ease, transform 0.22s ease',
       }}
     >
       <span style={{ fontWeight: 700, fontSize: 15 }}>{icons[toast.type]}</span>

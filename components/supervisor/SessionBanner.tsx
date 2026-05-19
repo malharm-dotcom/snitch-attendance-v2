@@ -112,8 +112,8 @@ export default function SessionBanner({
               fontFamily: 'var(--mono)',
               fontSize: 12,
               cursor: 'pointer',
-              background: shift === s ? 'var(--text)' : 'var(--surface2)',
-              color: shift === s ? '#fff' : 'var(--text-2)',
+              background: shift === s ? 'var(--accent)' : 'var(--surface2)',
+              color: shift === s ? 'var(--accent-text)' : 'var(--text-2)',
               transition: 'all 0.15s',
             }}
           >
