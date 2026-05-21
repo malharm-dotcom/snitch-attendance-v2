@@ -15,9 +15,10 @@ interface DeptCardProps {
   department: string;
   submission: Submission | null;
   onClick: () => void;
+  attendanceDate?: string;
 }
 
-export default function DeptCard({ facility, department, submission, onClick }: DeptCardProps) {
+export default function DeptCard({ facility, department, submission, onClick, attendanceDate }: DeptCardProps) {
   const submitted = !!submission;
 
   return (
@@ -53,9 +54,21 @@ export default function DeptCard({ facility, department, submission, onClick }: 
       </div>
 
       {submitted && submission && (
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)' }}>
-          {submission.marked_by} · {formatIST(submission.marked_at)}
-          {submission.shift && ` · ${submission.shift}`}
+        <div>
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)' }}>
+            {submission.marked_by} · {formatIST(submission.marked_at)}
+            {submission.shift && ` · ${submission.shift}`}
+          </div>
+          {submission.shift === 'Night' && attendanceDate && (() => {
+            const d = new Date(attendanceDate + 'T00:00:00Z');
+            d.setUTCDate(d.getUTCDate() + 1);
+            const next = d.toISOString().slice(0, 10);
+            return (
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>
+                Night shift (covers {attendanceDate} → {next})
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

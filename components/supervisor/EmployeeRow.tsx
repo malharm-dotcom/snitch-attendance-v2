@@ -74,6 +74,7 @@ export default function EmployeeRow({ employee, searchQuery, onChange, disabled 
           <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>
             {highlightText(employee.employee_code, searchQuery)}
             {employee.department && ` · ${employee.department}`}
+            {employee.designation && ` · ${employee.designation}`}
           </div>
         </div>
 

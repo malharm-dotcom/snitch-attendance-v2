@@ -98,6 +98,7 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
                 department={dept}
                 submission={sub}
                 onClick={() => openDetail(dept)}
+                attendanceDate={date}
               />
             );
           })}
