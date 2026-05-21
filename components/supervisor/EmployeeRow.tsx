@@ -10,6 +10,7 @@ export interface EmployeeEntry {
   facility: string;
   department: string;
   shift: string | null;
+  designation: string | null;
   attendance_status: string;
   remarks: string;
 }

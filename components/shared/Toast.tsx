@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, createContext, useContext, useCallback } from 'react';
+import { useState, createContext, useContext, useCallback } from 'react';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -44,12 +44,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    requestAnimationFrame(() => setVisible(true));
-  }, []);
-
   const icons: Record<ToastType, string> = {
     success: '✓',
     error: '✗',
@@ -83,9 +77,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         maxWidth: 380,
         boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
         backdropFilter: 'blur(8px)',
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateX(0)' : 'translateX(20px)',
-        transition: 'opacity 0.22s ease, transform 0.22s ease',
+        animation: 'slideUp 0.25s ease-out both',
       }}
     >
       <span style={{ fontWeight: 700, fontSize: 15 }}>{icons[toast.type]}</span>

@@ -148,13 +148,17 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
 
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
         {activeTab === 'mark' && (
-          <MarkAttendance supervisorName={supervisorName} facility={facility} departments={[currentDept]} shift={shift} />
+          <div className="tab-panel">
+            <MarkAttendance supervisorName={supervisorName} facility={facility} departments={[currentDept]} shift={shift} />
+          </div>
         )}
         {activeTab === 'history' && (
-          <HistoryPanel facility={facility} departments={[currentDept]} />
+          <div className="tab-panel">
+            <HistoryPanel facility={facility} departments={[currentDept]} />
+          </div>
         )}
         {activeTab === 'pending' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <BulkToolbar
               selectedCount={selected.size}
               totalCount={pendingRequests.length}
@@ -172,7 +176,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
           </div>
         )}
         {activeTab === 'resolved' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {resolvedRequests.length === 0 && (
               <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-3)', fontFamily: 'var(--mono)', fontSize: 13 }}>No resolved requests</div>
             )}
@@ -180,7 +184,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
           </div>
         )}
         {activeTab === 'log' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               {(['daily', 'matrix'] as const).map((v) => (
                 <button key={v} onClick={() => setLogView(v)} style={{ padding: '7px 16px', border: '1.5px solid var(--border)', borderRadius: 8, background: logView === v ? 'var(--text)' : 'var(--surface)', color: logView === v ? '#fff' : 'var(--text-2)', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
@@ -191,9 +195,9 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
             {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix facility={facility} />}
           </div>
         )}
-        {activeTab === 'employees' && <EmployeesTab />}
-        {activeTab === 'reports' && <ReportsTab facility={facility} />}
-        {activeTab === 'supervisors' && <SupervisorsTab />}
+        {activeTab === 'employees' && <div className="tab-panel"><EmployeesTab /></div>}
+        {activeTab === 'reports' && <div className="tab-panel"><ReportsTab facility={facility} /></div>}
+        {activeTab === 'supervisors' && <div className="tab-panel"><SupervisorsTab /></div>}
       </main>
     </>
   );

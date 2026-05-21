@@ -67,15 +67,19 @@ export default function SupervisorClient({ supervisorName, facility, department,
 
       <main style={{ maxWidth: 800, margin: '0 auto', padding: '24px 20px' }}>
         {activeTab === 'mark' && (
-          <MarkAttendance
-            supervisorName={supervisorName}
-            facility={facility}
-            departments={departments}
-            shift={shift}
-          />
+          <div className="tab-panel">
+            <MarkAttendance
+              supervisorName={supervisorName}
+              facility={facility}
+              departments={departments}
+              shift={shift}
+            />
+          </div>
         )}
         {activeTab === 'history' && (
-          <HistoryPanel facility={facility} departments={departments} />
+          <div className="tab-panel">
+            <HistoryPanel facility={facility} departments={departments} />
+          </div>
         )}
       </main>
     </ToastProvider>

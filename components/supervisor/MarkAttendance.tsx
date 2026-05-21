@@ -32,6 +32,8 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
   const prevShiftRef = useRef(shift);
   const [checkStatus, setCheckStatus] = useState<CheckStatus | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDesignations, setSelectedDesignations] = useState<Set<string>>(new Set());
+  const [sortByDesignation, setSortByDesignation] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rewriteOpen, setRewriteOpen] = useState(false);
@@ -43,6 +45,8 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     setEmployees([]);
     setSubmitted(false);
     setCheckStatus(null);
+    setSelectedDesignations(new Set());
+    setSortByDesignation(false);
 
     try {
       const [empRes, checkRes] = await Promise.all([
@@ -85,14 +89,33 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     );
   }, []);
 
+  const designations = useMemo(() => {
+    const seen = new Set<string>();
+    employees.forEach((e) => { if (e.designation) seen.add(e.designation); });
+    return Array.from(seen).sort();
+  }, [employees]);
+
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return employees;
-    const q = searchQuery.toLowerCase();
-    return employees.filter((e) =>
-      e.employee_name.toLowerCase().includes(q) ||
-      e.employee_code.toLowerCase().includes(q)
-    );
-  }, [employees, searchQuery]);
+    let result = employees;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((e) =>
+        e.employee_name.toLowerCase().includes(q) ||
+        e.employee_code.toLowerCase().includes(q)
+      );
+    }
+    if (selectedDesignations.size > 0) {
+      result = result.filter((e) => e.designation && selectedDesignations.has(e.designation));
+    }
+    if (sortByDesignation) {
+      result = [...result].sort((a, b) => {
+        const da = a.designation ?? '';
+        const db = b.designation ?? '';
+        return da.localeCompare(db) || a.employee_name.localeCompare(b.employee_name);
+      });
+    }
+    return result;
+  }, [employees, searchQuery, selectedDesignations, sortByDesignation]);
 
   const counts = useMemo(() => {
     return employees.reduce<Record<string, number>>((acc, e) => {
@@ -256,6 +279,68 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
               </>
             )}
           </div>
+
+          {/* Designation filter + sort */}
+          {designations.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                Designation
+              </span>
+              {designations.map((d) => {
+                const active = selectedDesignations.has(d);
+                return (
+                  <button
+                    key={d}
+                    onClick={() => {
+                      setSelectedDesignations((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(d)) next.delete(d); else next.add(d);
+                        return next;
+                      });
+                    }}
+                    style={{
+                      padding: '3px 10px',
+                      border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      borderRadius: 20,
+                      fontFamily: 'var(--mono)',
+                      fontSize: 11,
+                      cursor: 'pointer',
+                      background: active ? 'var(--accent)' : 'var(--surface)',
+                      color: active ? 'var(--accent-text)' : 'var(--text-2)',
+                      transition: 'background 0.13s, border-color 0.13s, color 0.13s',
+                    }}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
+              {selectedDesignations.size > 0 && (
+                <button
+                  onClick={() => setSelectedDesignations(new Set())}
+                  style={{ padding: '3px 10px', border: '1.5px solid var(--border)', borderRadius: 20, fontFamily: 'var(--mono)', fontSize: 11, cursor: 'pointer', background: 'none', color: 'var(--text-3)' }}
+                >
+                  ✕ Clear
+                </button>
+              )}
+              <button
+                onClick={() => setSortByDesignation((v) => !v)}
+                style={{
+                  marginLeft: 4,
+                  padding: '3px 10px',
+                  border: `1.5px solid ${sortByDesignation ? 'var(--accent)' : 'var(--border)'}`,
+                  borderRadius: 20,
+                  fontFamily: 'var(--mono)',
+                  fontSize: 11,
+                  cursor: 'pointer',
+                  background: sortByDesignation ? 'rgba(79,70,229,0.08)' : 'var(--surface)',
+                  color: sortByDesignation ? 'var(--accent)' : 'var(--text-2)',
+                  transition: 'background 0.13s, border-color 0.13s, color 0.13s',
+                }}
+              >
+                ↕ Sort by Designation
+              </button>
+            </div>
+          )}
 
           <ProgressBar present={presentCount} total={employees.length} />
           <SummaryBar counts={counts} />

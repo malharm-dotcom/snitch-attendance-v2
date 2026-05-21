@@ -127,7 +127,7 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
         {/* Pending tab */}
         {activeTab === 'pending' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <BulkToolbar
               selectedCount={selected.size}
               totalCount={pendingRequests.length}
@@ -156,7 +156,7 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
 
         {/* Resolved tab */}
         {activeTab === 'resolved' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {resolvedRequests.length === 0 && (
               <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-3)', fontFamily: 'var(--mono)', fontSize: 13 }}>
                 No resolved requests
@@ -170,7 +170,7 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
 
         {/* Attendance log tab */}
         {activeTab === 'log' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               {(['daily', 'matrix'] as const).map((v) => (
                 <button
@@ -200,8 +200,8 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
           </div>
         )}
 
-        {activeTab === 'employees' && <BulkUploadTab />}
-        {activeTab === 'reports' && <ReportsTab facility={facility} />}
+        {activeTab === 'employees' && <div className="tab-panel"><BulkUploadTab /></div>}
+        {activeTab === 'reports' && <div className="tab-panel"><ReportsTab facility={facility} /></div>}
       </main>
     </>
   );

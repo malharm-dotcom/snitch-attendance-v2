@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
         facility: true,
         department: true,
         shift: true,
+        designation: true,
       },
       orderBy: [{ department: 'asc' }, { employeeName: 'asc' }],
     });
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
         facility: e.facility,
         department: e.department,
         shift: e.shift,
+        designation: e.designation,
       })),
     });
   } catch (error) {

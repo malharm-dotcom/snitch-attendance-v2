@@ -88,13 +88,15 @@ input:focus, textarea:focus, select:focus {
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
 button {
   transition:
-    background   0.15s ease,
-    color        0.15s ease,
-    border-color 0.15s ease,
-    opacity      0.15s ease,
-    transform    0.10s ease,
-    box-shadow   0.18s ease;
+    background-color 0.15s ease,
+    background       0.15s ease,
+    color            0.15s ease,
+    border-color     0.15s ease,
+    opacity          0.15s ease,
+    transform        0.10s ease,
+    box-shadow       0.15s ease;
 }
+button:active:not(:disabled) { transform: scale(0.97); }
 
 /* ─── Status chip colours ────────────────────────────────────────────────── */
 .chip-present         { background: #d4f0df; color: #1f9e5e; }
@@ -183,8 +185,12 @@ button {
 .stagger > *:nth-child(5) { animation-delay:180ms; }
 .stagger > *:nth-child(n+6) { animation-delay:220ms; }
 
+/* ─── Page / tab entrance ────────────────────────────────────────────────── */
+.page-enter { animation: fadeIn  0.25s ease-out both; }
+.tab-panel  { animation: slideUp 0.20s ease-out both; }
+
 /* ─── Hover utilities ────────────────────────────────────────────────────── */
-.hover-row { transition: background 0.11s ease; }
+.hover-row { transition: background-color 0.15s ease, background 0.15s ease; }
 .hover-row:hover { background: var(--surface2) !important; }
 
 .card-hover {

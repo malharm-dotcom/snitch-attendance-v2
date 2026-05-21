@@ -77,6 +77,7 @@ export default function SessionBanner({
             background: 'var(--surface)',
             color: 'var(--text)',
             cursor: 'pointer',
+            transition: 'border-color 0.15s, box-shadow 0.15s',
           }}
         >
           {DEPARTMENTS.map((d) => (
