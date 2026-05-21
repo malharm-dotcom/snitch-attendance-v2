@@ -91,6 +91,34 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await requireAdmin();
+    if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    const { id } = await request.json();
+    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+
+    const target = await prisma.supervisor.findUnique({ where: { id } });
+    if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const targetInScope = isSouth(session.facility)
+      ? isSouth(target.facility)
+      : target.facility === session.facility;
+
+    if (!targetInScope) return NextResponse.json({ error: 'Cannot delete supervisors from another facility' }, { status: 403 });
+    if (target.role === 'manager') return NextResponse.json({ error: 'Manager accounts cannot be deleted here' }, { status: 403 });
+    if (target.supervisorName === session.supervisorName) return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 403 });
+
+    await prisma.supervisor.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/supervisors error:', error);
+    return NextResponse.json({ error: 'Failed to delete supervisor' }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest) {
   try {
     const session = await requireAdmin();

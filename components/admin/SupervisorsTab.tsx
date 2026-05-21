@@ -86,6 +86,8 @@ export default function SupervisorsTab() {
   const [addForm, setAddForm] = useState<EditForm>(emptyForm());
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [filterRole, setFilterRole] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<SupervisorRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { showToast } = useToast();
 
   const load = useCallback(async () => {
@@ -193,6 +195,32 @@ export default function SupervisorsTab() {
     if (filterRole && s.role !== filterRole) return false;
     return true;
   });
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/admin/supervisors', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: deleteTarget.id }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      showToast(`${deleteTarget.supervisorName} removed`, 'success');
+      setSupervisors((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err: unknown) {
+      showToast((err as Error).message || 'Delete failed', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function canDelete(s: SupervisorRow) {
+    if (s.role === 'manager') return false;
+    if (s.supervisorName === currentUser) return false;
+    return true;
+  }
 
   function canEdit(s: SupervisorRow) {
     if (s.role === 'manager') return false;
@@ -366,7 +394,7 @@ export default function SupervisorsTab() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--mono)' }}>
             <thead>
               <tr style={{ background: 'var(--surface2)', borderBottom: '2px solid var(--border)' }}>
-                {['Employee Code', 'Name', 'Facility', 'Departments', 'Role', 'Status', ''].map((h) => (
+                {['Employee Code', 'Name', 'Facility', 'Departments', 'Role', 'Status', '', ''].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, textTransform: 'uppercase', color: 'var(--text-2)', whiteSpace: 'nowrap', letterSpacing: '0.05em' }}>{h}</th>
                 ))}
               </tr>
@@ -414,10 +442,25 @@ export default function SupervisorsTab() {
                       </span>
                     )}
                   </td>
+                  <td style={{ padding: '10px 12px' }}>
+                    {canDelete(s) ? (
+                      <button
+                        onClick={() => {
+                          if (s.role === 'manager') { showToast('Manager accounts cannot be deleted', 'error'); return; }
+                          setDeleteTarget(s);
+                        }}
+                        style={{ padding: '5px 12px', border: '1.5px solid var(--danger, #dc2626)', borderRadius: 6, background: 'none', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--danger, #dc2626)', cursor: 'pointer', transition: 'border-color 0.12s, background 0.12s' }}
+                        onMouseEnter={(e) => { const el = e.currentTarget; el.style.background = 'rgba(220,38,38,0.06)'; }}
+                        onMouseLeave={(e) => { const el = e.currentTarget; el.style.background = 'none'; }}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
               {displayed.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-3)' }}>No supervisors found</td></tr>
+                <tr><td colSpan={8} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-3)' }}>No supervisors found</td></tr>
               )}
             </tbody>
           </table>
@@ -443,6 +486,25 @@ export default function SupervisorsTab() {
           onCancel={() => setShowAdd(false)}
           allowFacilityChange={isSouthAdmin}
         />
+      )}
+
+      {deleteTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16, animation: 'fadeIn 0.15s ease' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--r)', padding: '28px 32px', width: '100%', maxWidth: 420, boxShadow: '0 8px 40px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <h3 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, margin: 0 }}>Remove supervisor?</h3>
+            <p style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.5 }}>
+              Remove <strong style={{ color: 'var(--text)' }}>{deleteTarget.supervisorName}</strong> from <strong style={{ color: 'var(--text)' }}>{deleteTarget.facility}</strong>? This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting} style={{ padding: '9px 18px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={confirmDelete} disabled={deleting} style={{ padding: '9px 18px', border: 'none', borderRadius: 8, background: deleting ? 'var(--surface2)' : 'var(--danger, #dc2626)', color: deleting ? 'var(--text-3)' : '#fff', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: deleting ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}>
+                {deleting ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
