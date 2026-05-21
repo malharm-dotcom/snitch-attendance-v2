@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { istNow, parseISTDate } from '@/lib/ist';
+import { ATTENDANCE_CUTOFF_HOUR_IST } from '@/lib/constants';
 
 interface EmployeeSubmit {
   employee_id?: number | null;
@@ -26,6 +27,34 @@ export async function POST(request: NextRequest) {
 
     if (!attendance_date || !facility || !department || !marked_by || !employees?.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const nowIST = new Date(Date.now() + 5.5 * 3600000);
+    const todayIST = nowIST.toISOString().slice(0, 10);
+
+    if (attendance_date < todayIST) {
+      // Allow resubmission if a rewrite request has been approved for this date
+      const approvedRewrite = await prisma.attendanceRewriteRequest.findFirst({
+        where: {
+          attendanceDate: parseISTDate(attendance_date),
+          facility,
+          department,
+          requestStatus: 'approved',
+        },
+      });
+      if (!approvedRewrite) {
+        return NextResponse.json(
+          { error: 'Past date submissions must go through rewrite requests' },
+          { status: 403 },
+        );
+      }
+    }
+
+    if (nowIST.getUTCHours() >= ATTENDANCE_CUTOFF_HOUR_IST) {
+      return NextResponse.json(
+        { error: 'Attendance submission is closed for today. Contact your manager.' },
+        { status: 403 },
+      );
     }
 
     const markedAt = istNow();

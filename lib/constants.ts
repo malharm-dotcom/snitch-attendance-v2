@@ -1,3 +1,5 @@
+export const ATTENDANCE_CUTOFF_HOUR_IST = 23; // 11 PM IST — change here to adjust globally
+
 export const DEPARTMENTS = [
   'B2C Forward', 'B2C Return', 'B2B Forward', 'B2B Return',
   'Inventory', 'Inward', 'Logistics', 'Ops', 'Admin',

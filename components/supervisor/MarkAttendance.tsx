@@ -8,6 +8,8 @@ import SubmissionBanner from './SubmissionBanner';
 import Modal from '../shared/Modal';
 import { useToast } from '../shared/Toast';
 import { istDateString } from '@/lib/ist';
+import { formatIST } from '@/lib/formatIST';
+import { ATTENDANCE_CUTOFF_HOUR_IST } from '@/lib/constants';
 
 interface CheckStatus {
   submitted: boolean;
@@ -39,6 +41,14 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
   const [rewriteOpen, setRewriteOpen] = useState(false);
   const [rewriteReason, setRewriteReason] = useState('');
   const { showToast } = useToast();
+
+  // Derived submission/blocking state
+  const isPastDate = date < today;
+  const isPastCutoff = new Date(Date.now() + 5.5 * 3600000).getUTCHours() >= ATTENDANCE_CUTOFF_HOUR_IST;
+  const isRewriteApproved = checkStatus?.request_status === 'approved';
+  // Past-date block lifts when a rewrite is approved; cutoff always blocks
+  const isBlocked = (isPastDate && !isRewriteApproved) || isPastCutoff;
+  const alreadySubmitted = !!checkStatus?.submitted;
 
   async function loadEmployees() {
     setLoading(true);
@@ -136,7 +146,6 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     showToast(`Submitting ${employees.length} employees...`, 'info');
 
     try {
-      // Group by facility+department for multi-dept supervisors
       const groups = employees.reduce<Record<string, EmployeeEntry[]>>((acc, e) => {
         const key = `${e.facility}||${e.department}`;
         if (!acc[key]) acc[key] = [];
@@ -146,7 +155,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
 
       for (const [key, group] of Object.entries(groups)) {
         const [grpFacility, grpDept] = key.split('||');
-        await fetch('/api/attendance/submit', {
+        const res = await fetch('/api/attendance/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -164,6 +173,10 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
             })),
           }),
         });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Submission failed (${res.status})`);
+        }
       }
 
       setSubmitted(true);
@@ -175,8 +188,8 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
         shift,
       });
       showToast('Attendance submitted!', 'success');
-    } catch {
-      showToast('Submission failed', 'error');
+    } catch (err: unknown) {
+      showToast((err as Error).message || 'Submission failed', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -205,7 +218,16 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     }
   }
 
-  const isLocked = checkStatus?.submitted && checkStatus.request_status !== 'approved';
+  const warnBannerStyle: React.CSSProperties = {
+    background: '#fff8e1',
+    border: '1.5px solid var(--warn)',
+    borderRadius: 'var(--r)',
+    padding: '12px 16px',
+    fontFamily: 'var(--mono)',
+    fontSize: 13,
+    color: 'var(--warn)',
+    lineHeight: 1.6,
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -242,6 +264,18 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
         </button>
       </div>
 
+      {/* Blocked warning banner (past date or past cutoff) */}
+      {(isPastDate && !isRewriteApproved) && (
+        <div style={warnBannerStyle}>
+          ⚠ Past date selected. You cannot submit attendance directly for past dates. Use the Rewrite Request tab to request a correction.
+        </div>
+      )}
+      {isPastCutoff && !isPastDate && (
+        <div style={warnBannerStyle}>
+          ⚠ Attendance submission is closed after {ATTENDANCE_CUTOFF_HOUR_IST}:00 IST. Contact your manager if corrections are needed.
+        </div>
+      )}
+
       {/* Submission banner */}
       {checkStatus?.submitted && (
         <SubmissionBanner
@@ -263,6 +297,15 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
 
       {!loading && employees.length > 0 && (
         <>
+          {/* Already-submitted overwrite warning */}
+          {alreadySubmitted && (
+            <div style={warnBannerStyle}>
+              ⚠ Attendance already submitted for {departments[0]} {checkStatus?.shift || shift} on {date}
+              {checkStatus?.marked_by ? ` by ${checkStatus.marked_by}` : ''}
+              {checkStatus?.marked_at ? ` at ${formatIST(checkStatus.marked_at)}` : ''}. Loading for review only.
+            </div>
+          )}
+
           {/* Controls */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input
@@ -272,7 +315,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ flex: 1, minWidth: 180, padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 13 }}
             />
-            {!isLocked && (
+            {!isBlocked && (
               <>
                 <button onClick={() => setAllStatus('Present')} style={{ padding: '7px 14px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer', background: 'var(--surface)' }}>All Present</button>
                 <button onClick={() => setAllStatus('Week Off')} style={{ padding: '7px 14px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer', background: 'var(--surface)' }}>All Week Off</button>
@@ -352,7 +395,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
                 employee={emp}
                 searchQuery={searchQuery}
                 onChange={updateEmployee}
-                disabled={!!isLocked}
+                disabled={isBlocked}
               />
             ))}
             {filtered.length === 0 && (
@@ -362,14 +405,18 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
             )}
           </div>
 
-          {!isLocked && (
+          {!isBlocked && (
             <button
               onClick={handleSubmit}
               disabled={submitting}
               style={{
                 padding: '13px',
-                background: submitting ? 'var(--surface2)' : 'var(--accent)',
-                color: submitting ? 'var(--text-3)' : 'var(--accent-text)',
+                background: submitting
+                  ? 'var(--surface2)'
+                  : alreadySubmitted
+                    ? 'var(--warn)'
+                    : 'var(--accent)',
+                color: submitting ? 'var(--text-3)' : '#fff',
                 border: 'none',
                 borderRadius: 'var(--r)',
                 fontFamily: 'var(--display)',
@@ -378,7 +425,12 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
                 cursor: submitting ? 'not-allowed' : 'pointer',
               }}
             >
-              {submitting ? 'Submitting...' : `Submit Attendance (${employees.length} employees)`}
+              {submitting
+                ? 'Submitting...'
+                : alreadySubmitted
+                  ? `Resubmit (Overwrite) — ${employees.length} employees`
+                  : `Submit Attendance (${employees.length} employees)`
+              }
             </button>
           )}
         </>
@@ -386,7 +438,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
 
       {!loading && employees.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)', fontFamily: 'var(--mono)', fontSize: 13 }}>
-          Select a date and click "Load Employees" to begin
+          Select a date and click &quot;Load Employees&quot; to begin
         </div>
       )}
 
