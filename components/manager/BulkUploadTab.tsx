@@ -126,7 +126,9 @@ export default function BulkUploadTab() {
         roll_type: e.roll_type ?? e.rollType ?? '',
         gender: e.gender ?? '',
       }));
-      downloadBlob(toCSV(headers, mapped), 'employees-current.csv');
+      const scope: string = json.scope ?? 'all';
+      const date = new Date().toISOString().slice(0, 10);
+      downloadBlob(toCSV(headers, mapped), `employees_${scope}_${date}.csv`);
       showToast(`Downloaded ${mapped.length} employees`, 'success');
     } catch {
       showToast('Failed to download employee data', 'error');

@@ -1,29 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { isSouth } from '@/lib/auth';
+import { getSession, isSouth } from '@/lib/auth';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = request.nextUrl;
-    const facility = searchParams.get('facility') ?? '';
+    const session = await getSession();
+    if (!session.isLoggedIn || !['manager', 'admin'].includes(session.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    const south = facility ? isSouth(facility) : false;
-
-    const facilityFilter = facility
-      ? south
-        ? { in: ['WH1', 'WH2'] }
-        : { equals: facility }
-      : undefined;
+    const south = isSouth(session.facility);
+    const facilityFilter = south
+      ? { in: ['WH1', 'WH2'] }
+      : { equals: session.facility };
 
     const employees = await prisma.employee.findMany({
       where: {
         isActive: true,
-        ...(facilityFilter ? { facility: facilityFilter } : {}),
+        facility: facilityFilter,
       },
       orderBy: [{ facility: 'asc' }, { department: 'asc' }, { employeeName: 'asc' }],
     });
 
-    return NextResponse.json({ employees });
+    return NextResponse.json({ employees, scope: south ? 'south' : 'north' });
   } catch (error) {
     console.error('GET /api/reports/employees error:', error);
     return NextResponse.json({ error: 'Failed to fetch employee report' }, { status: 500 });

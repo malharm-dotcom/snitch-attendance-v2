@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No rows provided' }, { status: 400 });
     }
 
+    const { isSouth } = await import('@/lib/auth');
+    const allowedFacilities = isSouth(session.facility) ? ['WH1', 'WH2'] : [session.facility];
+
     let inserted = 0;
     let updated = 0;
     const errors: { row: number; error: string }[] = [];
@@ -41,6 +44,10 @@ export async function POST(request: NextRequest) {
       const row = rows[i];
       if (!row.employee_code || !row.employee_name || !row.facility || !row.department) {
         errors.push({ row: i + 1, error: 'Missing required fields (employee_code, employee_name, facility, department)' });
+        continue;
+      }
+      if (!allowedFacilities.includes(row.facility)) {
+        errors.push({ row: i + 1, error: `Facility '${row.facility}' is outside your allowed scope (${allowedFacilities.join(', ')})` });
         continue;
       }
 

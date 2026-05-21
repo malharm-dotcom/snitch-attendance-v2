@@ -14,6 +14,7 @@ import BulkUploadTab from '@/components/manager/BulkUploadTab';
 import ReportsTab from '@/components/manager/ReportsTab';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 import SupervisorsTab from '@/components/admin/SupervisorsTab';
+import EmployeesTab from '@/components/admin/EmployeesTab';
 
 type Tab = 'mark' | 'history' | 'pending' | 'resolved' | 'log' | 'employees' | 'reports' | 'supervisors';
 
@@ -190,7 +191,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
             {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix facility={facility} />}
           </div>
         )}
-        {activeTab === 'employees' && <BulkUploadTab />}
+        {activeTab === 'employees' && <EmployeesTab />}
         {activeTab === 'reports' && <ReportsTab facility={facility} />}
         {activeTab === 'supervisors' && <SupervisorsTab />}
       </main>
