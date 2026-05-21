@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { DEPARTMENTS } from '@/lib/constants';
 import { useToast } from '../shared/Toast';
+import { istDateString } from '@/lib/ist';
 
 interface EmployeeRow {
   id: number;
@@ -31,9 +32,54 @@ interface EditForm {
   reportingManager: string;
 }
 
+type CsvRow = Record<string, string>;
+
+const REQUIRED_HEADERS = [
+  'employee_code', 'employee_name', 'facility', 'department',
+  'is_active', 'shift', 'designation', 'reporting_manager', 'roll_type', 'gender',
+];
+
+const EXAMPLE_ROW: CsvRow = {
+  employee_code: 'SAPL00001',
+  employee_name: 'John Doe',
+  facility: 'WH1',
+  department: 'B2C Forward',
+  is_active: 'TRUE',
+  shift: 'Day',
+  designation: 'Executive',
+  reporting_manager: 'Manager Name',
+  roll_type: 'On-Roll',
+  gender: 'Male',
+};
+
 const SHIFTS = ['Day', 'Night'];
 const ROLL_TYPES = ['On-Roll', 'Off-Roll'];
 const GENDERS = ['Male', 'Female', 'Other'];
+
+function parseCSV(text: string): CsvRow[] {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, '').toLowerCase());
+  return lines.slice(1).map((line) => {
+    const values = line.split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
+    const row: CsvRow = {};
+    headers.forEach((h, i) => { row[h] = values[i] ?? ''; });
+    return row;
+  });
+}
+
+function toCSV(headers: string[], rows: CsvRow[]): string {
+  const escape = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  return [headers.join(','), ...rows.map((r) => headers.map((h) => escape(r[h])).join(','))].join('\n');
+}
+
+function downloadBlob(content: string, filename: string) {
+  const blob = new Blob([content], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
@@ -59,6 +105,19 @@ const inputStyle: React.CSSProperties = {
   transition: 'border-color 0.15s',
 };
 
+const btnStyle: React.CSSProperties = {
+  padding: '8px 16px',
+  border: '1.5px solid var(--border)',
+  borderRadius: 8,
+  fontFamily: 'var(--mono)',
+  fontSize: 12,
+  cursor: 'pointer',
+  background: 'var(--surface)',
+  color: 'var(--text)',
+  transition: 'background 0.15s, border-color 0.15s',
+  fontWeight: 500,
+};
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -76,6 +135,10 @@ export default function EmployeesTab() {
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{ inserted: number; updated: number; errors: { row: number; error: string }[] } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
   const load = useCallback(async () => {
@@ -94,6 +157,76 @@ export default function EmployeesTab() {
   }, [showToast]);
 
   useEffect(() => { load(); }, [load]);
+
+  function downloadTemplate() {
+    downloadBlob(toCSV(REQUIRED_HEADERS, [EXAMPLE_ROW]), 'employee_template.csv');
+  }
+
+  async function handleExport() {
+    setDownloading(true);
+    try {
+      const res = await fetch('/api/reports/employees');
+      if (!res.ok) throw new Error('Export failed');
+      const json = await res.json();
+      const rows: Record<string, unknown>[] = json.employees ?? [];
+      if (!rows.length) { showToast('No employee data found', 'info'); return; }
+      const mapped: CsvRow[] = rows.map((e) => ({
+        employee_code: String(e.employee_code ?? e.employeeCode ?? ''),
+        employee_name: String(e.employee_name ?? e.employeeName ?? ''),
+        facility: String(e.facility ?? ''),
+        department: String(e.department ?? ''),
+        is_active: String(e.is_active ?? e.isActive ?? ''),
+        shift: String(e.shift ?? ''),
+        designation: String(e.designation ?? ''),
+        reporting_manager: String(e.reporting_manager ?? e.reportingManager ?? ''),
+        roll_type: String(e.roll_type ?? e.rollType ?? ''),
+        gender: String(e.gender ?? ''),
+      }));
+      const date = istDateString();
+      const facility = currentFacility || (json.scope ?? 'all');
+      downloadBlob(toCSV(REQUIRED_HEADERS, mapped), `employees_${facility}_${date}.csv`);
+      showToast(`Downloaded ${mapped.length} employees`, 'success');
+    } catch {
+      showToast('Failed to export employee data', 'error');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-selected if needed
+    e.target.value = '';
+
+    const text = await file.text();
+    const rows = parseCSV(text);
+    if (!rows.length) { showToast('CSV is empty or has no data rows', 'error'); return; }
+
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const res = await fetch('/api/employees/bulk-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows }),
+      });
+      const data = await res.json();
+      setUploadResult(data);
+      const upserted = (data.inserted ?? 0) + (data.updated ?? 0);
+      const errCount = data.errors?.length ?? 0;
+      showToast(
+        `Uploaded: ${upserted} upserted, ${errCount} errors`,
+        errCount > 0 ? 'error' : 'success',
+      );
+      // Reload table so newly upserted employees are visible
+      load();
+    } catch {
+      showToast('Upload failed', 'error');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function openEdit(emp: EmployeeRow) {
     setEditForm({
@@ -131,9 +264,25 @@ export default function EmployeesTab() {
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
+      // Patch local state — no full reload needed
+      setEmployees((prev) => prev.map((e) =>
+        e.employeeCode === editForm.employeeCode
+          ? {
+              ...e,
+              employeeName: editForm.employeeName,
+              facility: editForm.facility,
+              department: editForm.department,
+              designation: editForm.designation || null,
+              shift: editForm.shift || null,
+              isActive: editForm.isActive,
+              rollType: editForm.rollType || null,
+              gender: editForm.gender || null,
+              reportingManager: editForm.reportingManager || null,
+            }
+          : e,
+      ));
       showToast('Employee updated', 'success');
       setEditForm(null);
-      load();
     } catch (err: unknown) {
       showToast((err as Error).message || 'Save failed', 'error');
     } finally {
@@ -164,16 +313,63 @@ export default function EmployeesTab() {
             </span>
           )}
         </h2>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          {currentFacility && (
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '4px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, color: 'var(--text-2)' }}>
-              {currentFacility}
-            </span>
-          )}
-        </div>
+        {currentFacility && (
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '4px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, color: 'var(--text-2)' }}>
+            {currentFacility}
+          </span>
+        )}
       </div>
 
-      {/* Search bar */}
+      {/* ── SECTION 1: Bulk Actions ── */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '12px 16px', background: 'var(--surface2)', borderRadius: 'var(--r)', border: '1px solid var(--border)' }}>
+        <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 4 }}>Bulk Actions</span>
+
+        <button onClick={downloadTemplate} style={btnStyle}>
+          ↓ Download Template
+        </button>
+
+        <button
+          onClick={handleExport}
+          disabled={downloading}
+          style={{ ...btnStyle, borderColor: downloading ? 'var(--border)' : 'var(--accent)', color: downloading ? 'var(--text-3)' : 'var(--text)', cursor: downloading ? 'not-allowed' : 'pointer' }}
+        >
+          {downloading ? 'Exporting...' : '↓ Export Current Data'}
+        </button>
+
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          style={{ ...btnStyle, borderColor: uploading ? 'var(--border)' : 'var(--border)', color: uploading ? 'var(--text-3)' : 'var(--text)', cursor: uploading ? 'not-allowed' : 'pointer' }}
+        >
+          {uploading ? 'Uploading...' : '↑ Upload CSV'}
+        </button>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv"
+          onChange={handleFile}
+          style={{ display: 'none' }}
+        />
+      </div>
+
+      {/* Upload result errors */}
+      {uploadResult && uploadResult.errors.length > 0 && (
+        <div style={{ background: 'var(--surface2)', borderRadius: 'var(--r)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>
+            Upload result: <span style={{ color: 'var(--success)' }}>✓ {uploadResult.inserted} inserted</span>{' '}
+            <span style={{ color: 'var(--warn)' }}>↻ {uploadResult.updated} updated</span>{' '}
+            <span style={{ color: 'var(--danger)' }}>✗ {uploadResult.errors.length} errors</span>
+          </div>
+          {uploadResult.errors.map((e) => (
+            <div key={e.row} style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--danger)' }}>
+              Row {e.row}: {e.error}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── SECTION 2: Employee Table ── */}
       <input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -183,7 +379,6 @@ export default function EmployeesTab() {
         onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
       />
 
-      {/* Table */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[...Array(8)].map((_, i) => (
