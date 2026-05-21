@@ -117,22 +117,20 @@ export default function LoginScreen({ sessionExpired }: LoginScreenProps) {
           pointerEvents: 'none',
         }} />
 
-        {/* Badge */}
-        <div style={{
-          background: 'var(--accent)',
-          color: 'var(--accent-text)',
-          borderRadius: 8,
-          padding: '6px 14px',
-          fontFamily: 'var(--mono)',
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          position: 'relative',
-          animation: 'fadeIn 0.5s ease both',
-        }}>
-          Snitch Warehouse
-        </div>
+        {/* Logo */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/favicon.png"
+          alt="Snitch"
+          style={{
+            height: '36px',
+            width: 'auto',
+            objectFit: 'contain',
+            filter: 'brightness(0) invert(1)',
+            position: 'relative',
+            animation: 'fadeIn 0.5s ease both',
+          }}
+        />
 
         <h1 style={{
           color: '#f1f5f9',
