@@ -69,17 +69,18 @@ export default function SessionBanner({
           value={department}
           onChange={handleDeptChange}
           style={{
-            border: '1.5px solid var(--border)',
+            border: `1.5px solid ${!department ? 'var(--accent)' : 'var(--border)'}`,
             borderRadius: 20,
             fontFamily: 'var(--mono)',
             fontSize: 11,
             padding: '2px 10px',
             background: 'var(--surface)',
-            color: 'var(--text)',
+            color: !department ? 'var(--text-2)' : 'var(--text)',
             cursor: 'pointer',
             transition: 'border-color 0.15s, box-shadow 0.15s',
           }}
         >
+          <option value="" disabled>Select department</option>
           {DEPARTMENTS.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}

@@ -29,7 +29,7 @@ interface Props {
 function AdminInner({ supervisorName, facility, department: initialDept, departments, role }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('mark');
   const [shift, setShift] = useState<'Day' | 'Night'>('Day');
-  const [currentDept, setCurrentDept] = useState(initialDept);
+  const [currentDept, setCurrentDept] = useState('');
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
   const [requests, setRequests] = useState<RewriteRequest[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
