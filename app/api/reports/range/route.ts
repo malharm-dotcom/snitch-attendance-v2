@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { parseISTDate } from '@/lib/ist';
 import { isSouth } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -15,9 +14,6 @@ export async function GET(request: NextRequest) {
     if (!from_date || !to_date) {
       return NextResponse.json({ error: 'from_date and to_date are required' }, { status: 400 });
     }
-
-    const parsedFrom = parseISTDate(from_date);
-    const parsedTo = parseISTDate(to_date);
 
     const south = facility ? isSouth(facility) : false;
     const facilityClause = facility
@@ -63,7 +59,7 @@ export async function GET(request: NextRequest) {
       JOIN attendance_header h ON h.id = sub.hid
       WHERE sub.rn = 1
       ORDER BY d.attendance_date, h.facility, h.department, d.employee_name
-    `, parsedFrom, parsedTo);
+    `, from_date, to_date);
 
     return NextResponse.json({ rows });
   } catch (error) {

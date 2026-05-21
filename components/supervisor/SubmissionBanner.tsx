@@ -1,6 +1,6 @@
 'use client';
 
-import { istTimestamp } from '@/lib/ist';
+import { formatIST } from '@/lib/formatIST';
 
 interface SubmissionBannerProps {
   markedBy: string;
@@ -29,7 +29,7 @@ export default function SubmissionBanner({ markedBy, markedAt, requestStatus, on
           {isPending ? 'Rewrite Pending' : isApproved ? 'Rewrite Approved — You may resubmit' : '✓ Attendance Submitted'}
         </div>
         <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
-          Marked by {markedBy} · {istTimestamp(new Date(markedAt))}
+          Marked by {markedBy} · {formatIST(markedAt)}
         </div>
       </div>
       {!isPending && !isApproved && (

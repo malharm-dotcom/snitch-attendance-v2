@@ -1,6 +1,7 @@
 'use client';
 
 import { STATUS_CLASSES } from '@/lib/constants';
+import { formatIST } from '@/lib/formatIST';
 import type { HistoryRecord } from '@/lib/types';
 
 interface HistoryTableProps {
@@ -74,7 +75,7 @@ export default function HistoryTable({ records, searchQuery, statusFilter }: His
                   <td style={{ padding: '9px 12px', color: 'var(--text-2)', maxWidth: 200 }}>{r.REMARKS ?? '—'}</td>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>{r.MARKED_BY}</td>
                   <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: 'var(--text-3)' }}>
-                    {new Date(r.MARKED_AT).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
+                    {formatIST(r.MARKED_AT)}
                   </td>
                 </tr>
               );

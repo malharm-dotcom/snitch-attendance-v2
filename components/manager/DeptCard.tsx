@@ -1,6 +1,6 @@
 'use client';
 
-import { istTimestamp } from '@/lib/ist';
+import { formatIST } from '@/lib/formatIST';
 
 interface Submission {
   facility: string;
@@ -54,7 +54,7 @@ export default function DeptCard({ facility, department, submission, onClick }: 
 
       {submitted && submission && (
         <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)' }}>
-          {submission.marked_by} · {istTimestamp(new Date(submission.marked_at))}
+          {submission.marked_by} · {formatIST(submission.marked_at)}
           {submission.shift && ` · ${submission.shift}`}
         </div>
       )}

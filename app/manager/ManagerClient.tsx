@@ -149,6 +149,7 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
                 onToggleSelect={toggleSelect}
                 onAction={handleAction}
                 showCheckbox
+                currentUser={supervisorName}
               />
             ))}
           </div>

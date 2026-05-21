@@ -1,6 +1,6 @@
 'use client';
 
-import { istTimestamp } from '@/lib/ist';
+import { formatIST } from '@/lib/formatIST';
 
 export interface RewriteRequest {
   request_id: number;
@@ -21,10 +21,12 @@ interface RequestCardProps {
   onToggleSelect?: (id: number) => void;
   onAction?: (id: number, action: 'approve' | 'reject') => void;
   showCheckbox?: boolean;
+  currentUser?: string;
 }
 
-export default function RequestCard({ request, selected, onToggleSelect, onAction, showCheckbox }: RequestCardProps) {
+export default function RequestCard({ request, selected, onToggleSelect, onAction, showCheckbox, currentUser }: RequestCardProps) {
   const isPending = request.request_status === 'pending';
+  const isOwnRequest = !!currentUser && request.supervisor_name === currentUser;
 
   return (
     <div style={{
@@ -74,25 +76,31 @@ export default function RequestCard({ request, selected, onToggleSelect, onActio
         </p>
 
         <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)' }}>
-          Requested {istTimestamp(new Date(request.requested_at))}
+          Requested {formatIST(request.requested_at)}
           {request.actioned_by && ` · ${request.request_status} by ${request.actioned_by}`}
         </div>
 
-        {isPending && onAction && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button
-              onClick={() => onAction(request.request_id, 'approve')}
-              style={{ padding: '7px 16px', border: 'none', borderRadius: 8, background: 'var(--success)', color: '#fff', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-            >
-              Approve
-            </button>
-            <button
-              onClick={() => onAction(request.request_id, 'reject')}
-              style={{ padding: '7px 16px', border: '1.5px solid var(--danger)', borderRadius: 8, background: 'none', color: 'var(--danger)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-            >
-              Reject
-            </button>
-          </div>
+        {isPending && (
+          isOwnRequest ? (
+            <div style={{ marginTop: 10, fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-3)', fontStyle: 'italic' }}>
+              Awaiting manager review
+            </div>
+          ) : onAction ? (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button
+                onClick={() => onAction(request.request_id, 'approve')}
+                style={{ padding: '7px 16px', border: 'none', borderRadius: 8, background: 'var(--success)', color: '#fff', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => onAction(request.request_id, 'reject')}
+                style={{ padding: '7px 16px', border: '1.5px solid var(--danger)', borderRadius: 8, background: 'none', color: 'var(--danger)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+              >
+                Reject
+              </button>
+            </div>
+          ) : null
         )}
       </div>
     </div>

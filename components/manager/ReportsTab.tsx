@@ -58,15 +58,18 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
       }
 
       const res = await fetch(url);
-      if (!res.ok) throw new Error('Report failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Report failed (${res.status})`);
+      }
       const json = await res.json();
       const rows = json.rows ?? json.employees ?? [];
       setData(rows);
       if (rows.length === 0) {
         showToast('No data found for this filter', 'info');
       }
-    } catch {
-      showToast('Failed to load report', 'error');
+    } catch (err: unknown) {
+      showToast((err as Error).message || 'Failed to load report', 'error');
     } finally {
       setLoading(false);
     }

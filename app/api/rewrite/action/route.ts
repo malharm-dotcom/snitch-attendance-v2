@@ -15,6 +15,9 @@ export async function POST(request: NextRequest) {
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (!['manager', 'admin'].includes(session.role)) {
+      return NextResponse.json({ error: 'Only managers and admins can approve or reject requests' }, { status: 403 });
+    }
 
     const body: ActionBody = await request.json();
     const { action, request_ids } = body;
@@ -28,11 +31,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'action must be approve or reject' }, { status: 400 });
     }
 
+    const ids = request_ids ?? [request_id];
+
+    // Block self-approval: reject any request where the requester is the current user
+    const selfRequests = await prisma.attendanceRewriteRequest.findMany({
+      where: { id: { in: ids }, supervisorName: session.supervisorName },
+      select: { id: true },
+    });
+    if (selfRequests.length > 0) {
+      return NextResponse.json({ error: 'You cannot approve or reject your own rewrite request' }, { status: 403 });
+    }
+
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
     const actionedAt = istNow();
     const actionedBy = session.supervisorName;
-
-    const ids = request_ids ?? [request_id];
 
     await prisma.attendanceRewriteRequest.updateMany({
       where: { id: { in: ids } },

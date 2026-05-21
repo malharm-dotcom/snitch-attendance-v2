@@ -171,7 +171,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
               <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-3)', fontFamily: 'var(--mono)', fontSize: 13 }}>No pending requests</div>
             )}
             {pendingRequests.map((r) => (
-              <RequestCard key={r.request_id} request={r} selected={selected.has(r.request_id)} onToggleSelect={toggleSelect} onAction={handleAction} showCheckbox />
+              <RequestCard key={r.request_id} request={r} selected={selected.has(r.request_id)} onToggleSelect={toggleSelect} onAction={handleAction} showCheckbox currentUser={supervisorName} />
             ))}
           </div>
         )}
