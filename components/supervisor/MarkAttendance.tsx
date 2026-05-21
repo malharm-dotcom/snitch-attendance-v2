@@ -40,7 +40,12 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
   const [submitting, setSubmitting] = useState(false);
   const [rewriteOpen, setRewriteOpen] = useState(false);
   const [rewriteReason, setRewriteReason] = useState('');
+  const [confirmFilterOpen, setConfirmFilterOpen] = useState(false);
   const { showToast } = useToast();
+
+  // Designation filter state — search query does NOT count; only designation chips
+  const designationFilterActive = selectedDesignations.size > 0;
+  const activeDesignationNames = Array.from(selectedDesignations).join(', ');
 
   // Derived submission/blocking state
   const isPastDate = date < today;
@@ -406,32 +411,45 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
           </div>
 
           {!isBlocked && (
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              style={{
-                padding: '13px',
-                background: submitting
-                  ? 'var(--surface2)'
-                  : alreadySubmitted
-                    ? 'var(--warn)'
-                    : 'var(--accent)',
-                color: submitting ? 'var(--text-3)' : '#fff',
-                border: 'none',
-                borderRadius: 'var(--r)',
-                fontFamily: 'var(--display)',
-                fontWeight: 700,
-                fontSize: 15,
-                cursor: submitting ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {submitting
-                ? 'Submitting...'
-                : alreadySubmitted
-                  ? `Resubmit (Overwrite) — ${employees.length} employees`
-                  : `Submit Attendance (${employees.length} employees)`
-              }
-            </button>
+            <>
+              {/* Designation-filter warning — shown only when chips are active */}
+              {designationFilterActive && (
+                <div style={{ ...warnBannerStyle, fontSize: 12 }}>
+                  ⚠ Designation filter active — showing {filtered.length} of {employees.length} employees.
+                  {' '}Submitting will mark attendance for all {employees.length} employees in this department,
+                  including those not visible.
+                </div>
+              )}
+
+              <button
+                onClick={designationFilterActive ? () => setConfirmFilterOpen(true) : handleSubmit}
+                disabled={submitting}
+                style={{
+                  padding: '13px',
+                  background: submitting
+                    ? 'var(--surface2)'
+                    : alreadySubmitted
+                      ? 'var(--warn)'
+                      : 'var(--accent)',
+                  color: submitting ? 'var(--text-3)' : '#fff',
+                  border: 'none',
+                  borderRadius: 'var(--r)',
+                  fontFamily: 'var(--display)',
+                  fontWeight: 700,
+                  fontSize: 15,
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {submitting
+                  ? 'Submitting...'
+                  : designationFilterActive
+                    ? `Submit All ${employees.length} Employees`
+                    : alreadySubmitted
+                      ? `Resubmit (Overwrite) — ${employees.length} employees`
+                      : `Submit Attendance (${employees.length} employees)`
+                }
+              </button>
+            </>
           )}
         </>
       )}
@@ -441,6 +459,36 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
           Select a date and click &quot;Load Employees&quot; to begin
         </div>
       )}
+
+      {/* Designation-filter confirmation modal */}
+      <Modal
+        open={confirmFilterOpen}
+        onClose={() => setConfirmFilterOpen(false)}
+        title="Submit attendance for all employees?"
+        actions={
+          <>
+            <button
+              onClick={() => setConfirmFilterOpen(false)}
+              style={{ padding: '8px 16px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { setConfirmFilterOpen(false); handleSubmit(); }}
+              style={{ padding: '8px 20px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+            >
+              Submit All {employees.length} Employees
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.7 }}>
+          You are viewing <strong>{filtered.length}</strong> employees filtered by{' '}
+          <strong>{activeDesignationNames}</strong>. Submitting will include all{' '}
+          <strong>{employees.length}</strong> employees in <strong>{departments[0]}</strong>.
+          Employees not visible will be submitted with their currently assigned status.
+        </p>
+      </Modal>
 
       {/* Rewrite modal */}
       <Modal
