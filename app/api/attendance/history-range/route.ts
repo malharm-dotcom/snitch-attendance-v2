@@ -16,13 +16,15 @@ export async function GET(request: NextRequest) {
     }
 
     const south = isSouth(facility);
+    // h2 is the alias used inside the subquery — h.* would cause "missing FROM-clause entry"
     const facilityClause = south
-      ? `h.facility IN ('WH1','WH2')`
-      : `h.facility = '${facility.replace(/'/g, "''")}'`;
+      ? `h2.facility IN ('WH1','WH2')`
+      : `h2.facility = '${facility.replace(/'/g, "''")}'`;
 
     const parsedFrom = parseISTDate(from_date);
     const parsedTo = parseISTDate(to_date);
 
+    // $2::date and $3::date cast TIMESTAMPTZ params to DATE for correct DATE BETWEEN DATE comparison
     const records = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
         d.employee_code      AS "EMPLOYEE_CODE",
@@ -39,14 +41,14 @@ export async function GET(request: NextRequest) {
           d2.*,
           ROW_NUMBER() OVER (
             PARTITION BY d2.employee_code, d2.attendance_date, h2.facility, h2.department, COALESCE(h2.shift,'Day')
-            ORDER BY h2.id DESC, d2.id DESC
+            ORDER BY h2.marked_at DESC, d2.id DESC
           ) AS rn,
           h2.id AS hid
         FROM attendance_detail d2
         JOIN attendance_header h2 ON d2.attendance_header_id = h2.id
         WHERE ${facilityClause}
           AND h2.department = $1
-          AND d2.attendance_date BETWEEN $2 AND $3
+          AND d2.attendance_date BETWEEN $2::date AND $3::date
       ) AS sub
       JOIN attendance_detail d ON d.id = sub.id
       JOIN attendance_header h ON h.id = sub.hid
@@ -57,6 +59,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ records });
   } catch (error) {
     console.error('GET /api/attendance/history-range error:', error);
-    return NextResponse.json({ error: 'Failed to fetch history range' }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message ?? 'Failed to fetch history range' }, { status: 500 });
   }
 }

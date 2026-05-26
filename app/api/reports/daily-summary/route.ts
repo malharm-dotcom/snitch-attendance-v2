@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
 
     const shiftClause = shift ? `AND h2.shift = '${shift.replace(/'/g, "''")}'` : '';
 
+    // COUNT(*)::int avoids BigInt which cannot be JSON-serialized
+    // $1::date casts the TIMESTAMPTZ parameter to DATE for correct DATE = DATE comparison
     const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
         h.department,
@@ -30,19 +32,19 @@ export async function GET(request: NextRequest) {
         d.attendance_status,
         e.roll_type,
         e.gender,
-        COUNT(*) AS cnt
+        COUNT(*)::int AS cnt
       FROM (
         SELECT
           d2.*,
           ROW_NUMBER() OVER (
             PARTITION BY d2.employee_code, d2.attendance_date, h2.facility, h2.department, COALESCE(h2.shift,'Day')
-            ORDER BY h2.id DESC, d2.id DESC
+            ORDER BY h2.marked_at DESC, d2.id DESC
           ) AS rn,
           h2.id AS hid
         FROM attendance_detail d2
         JOIN attendance_header h2 ON d2.attendance_header_id = h2.id
         WHERE ${facilityClause} ${shiftClause}
-          AND d2.attendance_date = $1
+          AND d2.attendance_date = $1::date
       ) sub
       JOIN attendance_detail d ON d.id = sub.id
       JOIN attendance_header h ON h.id = sub.hid
