@@ -410,7 +410,8 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
             )}
           </div>
 
-          {!isBlocked && (
+          {/* Submit button — hidden when already submitted without an approved rewrite */}
+          {!isBlocked && (!alreadySubmitted || isRewriteApproved) && (
             <>
               {/* Designation-filter warning — shown only when chips are active */}
               {designationFilterActive && (
@@ -428,9 +429,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
                   padding: '13px',
                   background: submitting
                     ? 'var(--surface2)'
-                    : alreadySubmitted
-                      ? 'var(--warn)'
-                      : 'var(--accent)',
+                    : 'var(--accent)',
                   color: submitting ? 'var(--text-3)' : '#fff',
                   border: 'none',
                   borderRadius: 'var(--r)',
@@ -442,10 +441,10 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
               >
                 {submitting
                   ? 'Submitting...'
-                  : designationFilterActive
-                    ? `Submit All ${employees.length} Employees`
-                    : alreadySubmitted
-                      ? `Resubmit (Overwrite) — ${employees.length} employees`
+                  : (alreadySubmitted && isRewriteApproved)
+                    ? 'Resubmit Attendance'
+                    : designationFilterActive
+                      ? `Submit All ${employees.length} Employees`
                       : `Submit Attendance (${employees.length} employees)`
                 }
               </button>

@@ -31,25 +31,48 @@ export async function POST(request: NextRequest) {
 
     const nowIST = new Date(Date.now() + 5.5 * 3600000);
     const todayIST = nowIST.toISOString().slice(0, 10);
+    const isPastDate = attendance_date < todayIST;
+    const parsedDate = parseISTDate(attendance_date);
 
-    if (attendance_date < todayIST) {
-      // Allow resubmission if a rewrite request has been approved for this date
-      const approvedRewrite = await prisma.attendanceRewriteRequest.findFirst({
-        where: {
-          attendanceDate: parseISTDate(attendance_date),
-          facility,
-          department,
-          requestStatus: 'approved',
-        },
-      });
-      if (!approvedRewrite) {
-        return NextResponse.json(
-          { error: 'Past date submissions must go through rewrite requests' },
-          { status: 403 },
-        );
-      }
+    // Check whether a submission already exists for this combination
+    const existingHeader = await prisma.attendanceHeader.findFirst({
+      where: {
+        attendanceDate: parsedDate,
+        facility,
+        department,
+        ...(shift ? { shift } : {}),
+      },
+      select: { id: true },
+    });
+
+    // Find any approved rewrite request for this combination
+    const approvedRewrite = await prisma.attendanceRewriteRequest.findFirst({
+      where: {
+        attendanceDate: parsedDate,
+        facility,
+        department,
+        requestStatus: 'approved',
+      },
+      select: { id: true },
+    });
+
+    // Past-date guard: cannot submit to a past date without an approved rewrite
+    if (isPastDate && !approvedRewrite) {
+      return NextResponse.json(
+        { error: 'Past date submissions must go through rewrite requests' },
+        { status: 403 },
+      );
     }
 
+    // Existing-submission guard: cannot resubmit without an approved rewrite
+    if (existingHeader && !approvedRewrite) {
+      return NextResponse.json(
+        { error: 'Attendance already submitted. Request a rewrite through the manager to make changes.' },
+        { status: 403 },
+      );
+    }
+
+    // Cutoff-hour guard
     if (nowIST.getUTCHours() >= ATTENDANCE_CUTOFF_HOUR_IST) {
       return NextResponse.json(
         { error: 'Attendance submission is closed for today. Contact your manager.' },
@@ -57,8 +80,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // All guards passed — create the submission
     const markedAt = istNow();
-    const parsedDate = parseISTDate(attendance_date);
 
     const header = await prisma.attendanceHeader.create({
       data: {
@@ -83,6 +106,14 @@ export async function POST(request: NextRequest) {
         attendanceDate: parsedDate,
       })),
     });
+
+    // Consume the approved rewrite so it cannot authorise another overwrite
+    if (approvedRewrite) {
+      await prisma.attendanceRewriteRequest.update({
+        where: { id: approvedRewrite.id },
+        data: { requestStatus: 'used' },
+      });
+    }
 
     return NextResponse.json({ success: true, header_id: header.id });
   } catch (error) {
