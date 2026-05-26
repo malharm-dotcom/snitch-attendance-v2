@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
           d2.*,
           ROW_NUMBER() OVER (
             PARTITION BY d2.employee_code, d2.attendance_date, h2.facility, h2.department, COALESCE(h2.shift,'Day')
-            ORDER BY h2.marked_at DESC, d2.id DESC
+            ORDER BY h2.id DESC, d2.id DESC
           ) AS rn,
           h2.id AS hid
         FROM attendance_detail d2
