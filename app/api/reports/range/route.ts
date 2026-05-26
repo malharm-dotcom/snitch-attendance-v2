@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isSouth } from '@/lib/auth';
+import { parseISTDate } from '@/lib/ist';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,16 +19,16 @@ export async function GET(request: NextRequest) {
     const south = facility ? isSouth(facility) : false;
     const facilityClause = facility
       ? south
-        ? `h.facility IN ('WH1','WH2')`
-        : `h.facility = '${facility.replace(/'/g, "''")}'`
+        ? `h2.facility IN ('WH1','WH2')`
+        : `h2.facility = '${facility.replace(/'/g, "''")}'`
       : '1=1';
 
     const deptClause = department
-      ? `AND h.department = '${department.replace(/'/g, "''")}'`
+      ? `AND h2.department = '${department.replace(/'/g, "''")}'`
       : '';
 
     const shiftClause = shift
-      ? `AND h.shift = '${shift.replace(/'/g, "''")}'`
+      ? `AND h2.shift = '${shift.replace(/'/g, "''")}'`
       : '';
 
     const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
@@ -59,11 +60,11 @@ export async function GET(request: NextRequest) {
       JOIN attendance_header h ON h.id = sub.hid
       WHERE sub.rn = 1
       ORDER BY d.attendance_date, h.facility, h.department, d.employee_name
-    `, from_date, to_date);
+    `, parseISTDate(from_date), parseISTDate(to_date));
 
     return NextResponse.json({ rows });
   } catch (error) {
     console.error('GET /api/reports/range error:', error);
-    return NextResponse.json({ error: 'Failed to generate range report' }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message ?? 'Failed to generate range report' }, { status: 500 });
   }
 }

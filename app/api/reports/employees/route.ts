@@ -25,6 +25,6 @@ export async function GET() {
     return NextResponse.json({ employees, scope: south ? 'south' : 'north' });
   } catch (error) {
     console.error('GET /api/reports/employees error:', error);
-    return NextResponse.json({ error: 'Failed to fetch employee report' }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message ?? 'Failed to fetch employee report' }, { status: 500 });
   }
 }
