@@ -39,13 +39,16 @@ export default function Modal({ open, onClose, title, children, actions, width =
         borderRadius: 'var(--r)',
         width: '100%',
         maxWidth: width,
+        maxHeight: '80vh',
         boxShadow: '0 8px 40px rgba(0,0,0,0.22)',
-        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 20px',
           borderBottom: '1px solid var(--border)',
+          flexShrink: 0,
         }}>
           <h3 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 16, fontWeight: 700 }}>
             {title}
@@ -61,12 +64,13 @@ export default function Modal({ open, onClose, title, children, actions, width =
             ×
           </button>
         </div>
-        <div style={{ padding: '20px' }}>{children}</div>
+        <div style={{ padding: '20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>{children}</div>
         {actions && (
           <div style={{
             display: 'flex', gap: 8, justifyContent: 'flex-end',
             padding: '12px 20px',
             borderTop: '1px solid var(--border)',
+            flexShrink: 0,
           }}>
             {actions}
           </div>
