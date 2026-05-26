@@ -58,7 +58,7 @@ export default function SessionBanner({
         fontFamily: 'var(--mono)',
         fontSize: 11,
         padding: '2px 10px',
-        borderRadius: 20,
+        borderRadius: 4,
         fontWeight: 500,
       }}>
         {facility}
@@ -70,7 +70,7 @@ export default function SessionBanner({
           onChange={handleDeptChange}
           style={{
             border: `1.5px solid ${!department ? 'var(--accent)' : 'var(--border)'}`,
-            borderRadius: 20,
+            borderRadius: 6,
             fontFamily: 'var(--mono)',
             fontSize: 11,
             padding: '2px 10px',
@@ -87,11 +87,12 @@ export default function SessionBanner({
         </select>
       ) : (
         <span style={{
-          border: '1.5px solid var(--border)',
+          border: '1px solid var(--border)',
           fontFamily: 'var(--mono)',
           fontSize: 11,
           padding: '2px 10px',
-          borderRadius: 20,
+          borderRadius: 6,
+          background: 'var(--surface2)',
           color: 'var(--text-2)',
         }}>
           {departments.length > 1 ? departments.join(', ') : department}
@@ -106,7 +107,7 @@ export default function SessionBanner({
             style={{
               padding: '5px 14px',
               border: 'none',
-              borderRadius: 20,
+              borderRadius: 6,
               fontFamily: 'var(--mono)',
               fontSize: 12,
               cursor: 'pointer',

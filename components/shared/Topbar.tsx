@@ -65,9 +65,7 @@ export default function Topbar({ name, role }: TopbarProps) {
   return (
     <>
       <header style={{
-        background: 'rgba(255,255,255,0.88)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
+        background: '#ffffff',
         borderBottom: '1px solid var(--border)',
         padding: '0 20px',
         height: 52,
@@ -107,7 +105,7 @@ export default function Topbar({ name, role }: TopbarProps) {
             fontSize: 10,
             fontWeight: 600,
             padding: '2px 7px',
-            borderRadius: 20,
+            borderRadius: 4,
             textTransform: 'uppercase',
             letterSpacing: '0.04em',
           }}>
@@ -125,22 +123,15 @@ export default function Topbar({ name, role }: TopbarProps) {
             title="Change PIN"
             style={{
               background: 'none',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '5px 11px',
+              border: 'none',
+              padding: '4px 6px',
               fontFamily: 'var(--mono)',
               fontSize: 11,
-              color: 'var(--text-2)',
+              color: 'var(--text-3)',
               cursor: 'pointer',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--accent)';
-              e.currentTarget.style.color = 'var(--accent)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border)';
-              e.currentTarget.style.color = 'var(--text-2)';
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-3)'; }}
           >
             Change PIN
           </button>
@@ -148,22 +139,15 @@ export default function Topbar({ name, role }: TopbarProps) {
             onClick={handleLogout}
             style={{
               background: 'none',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '5px 11px',
+              border: 'none',
+              padding: '4px 6px',
               fontFamily: 'var(--mono)',
               fontSize: 11,
-              color: 'var(--text-2)',
+              color: 'var(--text-3)',
               cursor: 'pointer',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--danger)';
-              e.currentTarget.style.color = 'var(--danger)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border)';
-              e.currentTarget.style.color = 'var(--text-2)';
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-3)'; }}
           >
             Logout
           </button>

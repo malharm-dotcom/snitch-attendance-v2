@@ -26,11 +26,13 @@ export default function DeptCard({ facility, department, submission, onClick, at
       onClick={onClick}
       style={{
         background: 'var(--surface)',
-        border: `1.5px solid ${submitted ? 'var(--success)' : 'var(--border)'}`,
+        border: '1px solid var(--border)',
+        borderLeft: submitted ? '3px solid var(--success)' : '1px solid var(--border)',
         borderRadius: 'var(--r)',
         padding: '14px',
         cursor: 'pointer',
-        transition: 'border-color 0.15s, box-shadow 0.15s',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        transition: 'box-shadow 0.15s',
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 12px rgba(0,0,0,0.1)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}
@@ -46,7 +48,7 @@ export default function DeptCard({ facility, department, submission, onClick, at
           padding: '3px 8px',
           borderRadius: 20,
           fontWeight: 600,
-          background: submitted ? '#e8f7ee' : 'var(--surface2)',
+          background: submitted ? 'var(--success-bg)' : 'var(--surface2)',
           color: submitted ? 'var(--success)' : 'var(--text-3)',
         }}>
           {submitted ? '✓ Submitted' : 'Pending'}

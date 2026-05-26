@@ -64,7 +64,7 @@ export default function RequestCard({ request, selected, onToggleSelect, onActio
             padding: '2px 8px',
             borderRadius: 20,
             fontWeight: 600,
-            background: isPending ? '#fff8e1' : request.request_status === 'approved' ? '#e8f7ee' : '#fde2e2',
+            background: isPending ? 'var(--warn-bg)' : request.request_status === 'approved' ? 'var(--success-bg)' : 'var(--danger-bg)',
             color: isPending ? 'var(--warn)' : request.request_status === 'approved' ? 'var(--success)' : 'var(--danger)',
           }}>
             {request.request_status}
@@ -89,13 +89,13 @@ export default function RequestCard({ request, selected, onToggleSelect, onActio
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button
                 onClick={() => onAction(request.request_id, 'approve')}
-                style={{ padding: '7px 16px', border: 'none', borderRadius: 8, background: 'var(--success)', color: '#fff', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                style={{ padding: '7px 16px', border: 'none', borderRadius: 6, background: 'var(--success)', color: '#fff', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
               >
                 Approve
               </button>
               <button
                 onClick={() => onAction(request.request_id, 'reject')}
-                style={{ padding: '7px 16px', border: '1.5px solid var(--danger)', borderRadius: 8, background: 'none', color: 'var(--danger)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                style={{ padding: '7px 16px', border: '1.5px solid var(--danger)', borderRadius: 6, background: 'none', color: 'var(--danger)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
               >
                 Reject
               </button>

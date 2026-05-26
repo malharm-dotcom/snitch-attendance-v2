@@ -4,45 +4,45 @@
 
 /* ─── Tokens ────────────────────────────────────────────────────────────── */
 :root {
-  /* Warm white light theme */
-  --bg:           #f9f8f5;
+  /* Warm neutral surfaces — Keka-inspired stone palette */
+  --bg:           #f5f5f4;
   --surface:      #ffffff;
-  --surface2:     #f3f2ef;
-  --border:       #e6e4dc;
-  --border2:      #d4d1c8;
+  --surface2:     #fafaf9;
+  --border:       #e7e5e4;
+  --border2:      #d6d3d1;
 
-  /* Indigo accent — readable, professional */
-  --accent:       #4f46e5;
-  --accent-d:     #4338ca;
+  /* Indigo accent — deeper, enterprise */
+  --accent:       #4338ca;
+  --accent-d:     #3730a3;
   --accent-text:  #ffffff;
-  --accent-glow:  rgba(79,70,229,0.18);
+  --accent-glow:  rgba(67,56,202,0.12);
 
-  /* Text */
-  --text:         #141414;
-  --text-2:       #6b7280;
-  --text-3:       #a3a3a3;
+  /* Text — stone scale */
+  --text:         #1c1917;
+  --text-2:       #44403c;
+  --text-3:       #78716c;
 
-  /* Semantic */
+  /* Semantic — clear but not loud */
   --danger:       #dc2626;
-  --danger-bg:    rgba(220,38,38,0.08);
+  --danger-bg:    #fef2f2;
   --success:      #16a34a;
-  --success-bg:   rgba(22,163,74,0.08);
-  --warn:         #ca8a04;
-  --warn-bg:      rgba(202,138,4,0.08);
+  --success-bg:   #f0fdf4;
+  --warn:         #d97706;
+  --warn-bg:      #fffbeb;
   --info:         #2563eb;
-  --info-bg:      rgba(37,99,235,0.08);
+  --info-bg:      #eff6ff;
 
   /* Shape */
-  --r:            12px;
+  --r:            8px;
 
   /* Typography */
-  --display:      var(--font-plus-jakarta), system-ui, sans-serif;
+  --display:      var(--font-inter), system-ui, sans-serif;
   --mono:         var(--font-jetbrains), 'Fira Code', monospace;
 
-  /* Elevation */
-  --shadow-sm:    0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md:    0 4px 16px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.06);
-  --shadow-lg:    0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.07);
+  /* Elevation — softer than before */
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:    0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg:    0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
 }
 
 /* ─── Reset ─────────────────────────────────────────────────────────────── */
@@ -60,18 +60,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Very subtle corner tint — barely visible on white, just adds warmth */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 70% 50% at -5% -5%,  rgba(79,70,229,0.04) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 105% 105%, rgba(79,70,229,0.03) 0%, transparent 55%);
-  pointer-events: none;
-  z-index: -1;
-}
-
 /* ─── Focus ─────────────────────────────────────────────────────────────── */
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -82,7 +70,7 @@ body::before {
 input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px rgba(79,70,229,0.12) !important;
+  box-shadow: 0 0 0 2px rgba(67,56,202,0.10) !important;
 }
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
@@ -98,16 +86,16 @@ button {
 }
 button:active:not(:disabled) { transform: scale(0.97); }
 
-/* ─── Status chip colours ────────────────────────────────────────────────── */
-.chip-present         { background: #d4f0df; color: #1f9e5e; }
-.chip-absent          { background: #fde2e2; color: #d93030; }
-.chip-week-off        { background: #e8e4ff; color: #5b3fc8; }
-.chip-half            { background: #fff3cc; color: #9b6c00; }
-.chip-sick-leave      { background: #ffe4cc; color: #c97a00; }
-.chip-planned-leave   { background: #cce8ff; color: #0068c9; }
-.chip-unplanned-leave { background: #fde2e2; color: #d93030; }
-.chip-holiday         { background: #e0f4ff; color: #0099cc; }
-.chip-leave           { background: #f0e0ff; color: #7a00cc; }
+/* ─── Status chip colours — muted pastel, enterprise ─────────────────────── */
+.chip-present         { background: #dcfce7; color: #15803d; }
+.chip-absent          { background: #fee2e2; color: #b91c1c; }
+.chip-week-off        { background: #ede9fe; color: #5b21b6; }
+.chip-half            { background: #fef9c3; color: #854d0e; }
+.chip-sick-leave      { background: #ffedd5; color: #9a3412; }
+.chip-planned-leave   { background: #dbeafe; color: #1d4ed8; }
+.chip-unplanned-leave { background: #fee2e2; color: #b91c1c; }
+.chip-holiday         { background: #e0f2fe; color: #0369a1; }
+.chip-leave           { background: #f3e8ff; color: #6b21a8; }
 
 /* ─── Skeleton shimmer ───────────────────────────────────────────────────── */
 @keyframes shimmer {
@@ -144,7 +132,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
 
 /* ─── Row pulse on status change ────────────────────────────────────────── */
 @keyframes rowPulse {
-  0%   { background: rgba(79,70,229,0.12); }
+  0%   { background: rgba(67,56,202,0.08); }
   100% { background: transparent; }
 }
 .row-pulse { animation: rowPulse 0.55s ease-out; }
@@ -167,7 +155,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
   to   { opacity: 1; transform: translateX(0); }
 }
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; transform: scale(0.97); }
   to   { opacity: 1; transform: scale(1); }
 }
 
@@ -190,40 +178,37 @@ button:active:not(:disabled) { transform: scale(0.97); }
 .tab-panel  { animation: slideUp 0.20s ease-out both; }
 
 /* ─── Hover utilities ────────────────────────────────────────────────────── */
-.hover-row { transition: background-color 0.15s ease, background 0.15s ease; }
+.hover-row { transition: background-color 0.12s ease; }
 .hover-row:hover { background: var(--surface2) !important; }
 
 .card-hover {
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: box-shadow 0.18s ease;
 }
 .card-hover:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
 }
 
-.glow-hover { transition: box-shadow 0.2s ease; }
+.glow-hover { transition: box-shadow 0.18s ease; }
 .glow-hover:hover { box-shadow: 0 0 0 3px var(--accent-glow); }
 
 /* ─── Modal ──────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10,10,20,0.45);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.40);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeInFast 0.18s ease;
+  animation: fadeInFast 0.15s ease;
   padding: 20px;
 }
 .modal-box {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 12px;
   box-shadow: var(--shadow-lg);
-  animation: scaleIn 0.22s cubic-bezier(.4,0,.2,1);
+  animation: scaleIn 0.18s cubic-bezier(.4,0,.2,1);
   max-height: 90vh;
   overflow-y: auto;
   width: 100%;
@@ -233,11 +218,11 @@ button:active:not(:disabled) { transform: scale(0.97); }
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 9px;
-  border-radius: 20px;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-size: 11px;
   font-family: var(--mono);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.6;
 }
 

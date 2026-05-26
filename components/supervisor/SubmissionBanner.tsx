@@ -15,8 +15,9 @@ export default function SubmissionBanner({ markedBy, markedAt, requestStatus, on
 
   return (
     <div style={{
-      background: isPending ? '#fff8e1' : '#e8f7ee',
-      border: `1.5px solid ${isPending ? 'var(--warn)' : 'var(--success)'}`,
+      background: isPending ? 'var(--warn-bg)' : 'var(--success-bg)',
+      border: '1px solid var(--border)',
+      borderLeft: `3px solid ${isPending ? 'var(--warn)' : 'var(--success)'}`,
       borderRadius: 'var(--r)',
       padding: '14px 18px',
       display: 'flex',

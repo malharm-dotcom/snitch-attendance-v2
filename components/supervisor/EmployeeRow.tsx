@@ -46,6 +46,11 @@ export default function EmployeeRow({ employee, searchQuery, onChange, disabled 
   const showRemarks = REMARKS_NEEDED.includes(employee.attendance_status);
   const cls = STATUS_CLASSES[employee.attendance_status] ?? 'present';
 
+  const statusBg = employee.attendance_status === 'Present' ? 'var(--success-bg)' :
+                   employee.attendance_status === 'Absent'  ? 'var(--danger-bg)'  : 'var(--warn-bg)';
+  const statusColor = employee.attendance_status === 'Present' ? 'var(--success)' :
+                      employee.attendance_status === 'Absent'  ? 'var(--danger)'  : 'var(--warn)';
+
   function handleStatusChange(val: string) {
     onChange(employee.employee_code, 'attendance_status', val);
     setJustChanged(true);
@@ -87,13 +92,13 @@ export default function EmployeeRow({ employee, searchQuery, onChange, disabled 
           onChange={(e) => handleStatusChange(e.target.value)}
           disabled={disabled}
           style={{
-            border: '1.5px solid var(--border)',
-            borderRadius: 8,
+            border: `1.5px solid ${statusColor}`,
+            borderRadius: 6,
             fontFamily: 'var(--mono)',
             fontSize: 12,
             padding: '5px 8px',
-            background: 'var(--surface)',
-            color: 'var(--text)',
+            background: statusBg,
+            color: statusColor,
             cursor: disabled ? 'not-allowed' : 'pointer',
             flexShrink: 0,
           }}
@@ -119,7 +124,7 @@ export default function EmployeeRow({ employee, searchQuery, onChange, disabled 
           style={{
             width: '100%',
             border: '1.5px solid var(--border)',
-            borderRadius: 8,
+            borderRadius: 6,
             padding: '8px 10px',
             fontFamily: 'var(--mono)',
             fontSize: 12,

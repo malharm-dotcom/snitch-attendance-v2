@@ -108,8 +108,8 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
               background: 'none',
               fontFamily: 'var(--display)',
               fontSize: 14,
-              fontWeight: activeTab === tab.id ? 700 : 400,
-              color: activeTab === tab.id ? 'var(--text)' : 'var(--text-2)',
+              fontWeight: activeTab === tab.id ? 600 : 400,
+              color: activeTab === tab.id ? 'var(--text)' : 'var(--text-3)',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
             }}
@@ -180,7 +180,7 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
                   style={{
                     padding: '7px 16px',
                     border: '1.5px solid var(--border)',
-                    borderRadius: 8,
+                    borderRadius: 6,
                     background: logView === v ? 'var(--text)' : 'var(--surface)',
                     color: logView === v ? '#fff' : 'var(--text-2)',
                     fontFamily: 'var(--mono)',
