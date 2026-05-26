@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isSouth } from '@/lib/auth';
+import { parseISTDate } from '@/lib/ist';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,8 +16,8 @@ export async function GET(request: NextRequest) {
 
     const south = isSouth(facility);
     const facilityClause = south
-      ? `h.facility IN ('WH1','WH2')`
-      : `h.facility = '${facility.replace(/'/g, "''")}'`;
+      ? `h2.facility IN ('WH1','WH2')`
+      : `h2.facility = '${facility.replace(/'/g, "''")}'`;
 
     // Deduplicated via ROW_NUMBER — latest header+detail wins per employee per date
     const records = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
       JOIN attendance_header h ON h.id = sub.hid
       WHERE sub.rn = 1
       ORDER BY sub.employee_name
-    `, department, attendance_date);
+    `, department, parseISTDate(attendance_date));
 
     return NextResponse.json({ records });
   } catch (error) {

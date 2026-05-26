@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
     }
 
     // All guards passed — create the submission
-    const markedAt = istNow();
+    // Use real UTC timestamp so formatIST(+5.5h) displays correct IST time
+    const markedAt = new Date();
 
     const header = await prisma.attendanceHeader.create({
       data: {
