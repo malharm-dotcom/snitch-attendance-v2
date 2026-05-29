@@ -33,6 +33,7 @@ export const STATUS_CLASSES: Record<string, string> = {
 
 export const MATRIX_CHIP_LABELS: Record<string, [string, string]> = {
   'Present':           ['present', 'P'],
+  'Absent':            ['absent',  'A'],
   'LOP':               ['absent',  'LOP'],
   'Week Off':          ['week-off','WO'],
   'Half Day':          ['half',    '½'],

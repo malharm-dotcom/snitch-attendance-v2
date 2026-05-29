@@ -22,18 +22,18 @@ interface Props {
 }
 
 function ManagerInner({ supervisorName, facility, role }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('pending');
+  const [activeTab, setActiveTab] = useState<Tab>('log');
   const [requests, setRequests] = useState<RewriteRequest[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [logView, setLogView] = useState<'daily' | 'matrix'>('daily');
   const { showToast } = useToast();
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'pending', label: 'Pending' },
-    { id: 'resolved', label: 'Resolved' },
     { id: 'log', label: 'Attendance Log' },
     { id: 'employees', label: 'Employees' },
     { id: 'reports', label: 'Reports' },
+    { id: 'pending', label: 'Pending' },
+    { id: 'resolved', label: 'Resolved' },
   ];
 
   const loadRequests = useCallback(async (status?: string) => {

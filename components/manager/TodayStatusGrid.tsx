@@ -62,8 +62,8 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
 
   const submissionMap = new Map(submissions.map((s) => [`${s.facility}|${s.department}`, s]));
 
-  const submitted = submissions.length;
   const total = DEPARTMENTS.length;
+  const submitted = DEPARTMENTS.filter((dept) => submissions.some((s) => s.department === dept)).length;
   const pending = total - submitted;
 
   return (

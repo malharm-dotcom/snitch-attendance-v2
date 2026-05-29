@@ -115,7 +115,12 @@ export default function HistoryMatrix({ records, searchQuery, statusFilter }: Hi
                 {dates.map((d) => {
                   const rec = matrix.get(emp.code)?.get(d);
                   if (!rec) return <td key={d} style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--text-3)' }}>—</td>;
-                  const [chipClass, label] = MATRIX_CHIP_LABELS[rec.ATTENDANCE_STATUS] ?? ['present', '?'];
+                  if (!rec.ATTENDANCE_STATUS) return <td key={d} style={{ padding: '8px 10px' }} />;
+                  const chipEntry = MATRIX_CHIP_LABELS[rec.ATTENDANCE_STATUS];
+                  if (!chipEntry) return (
+                    <td key={d} style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--text-3)', fontFamily: 'var(--mono)', fontSize: 10 }}>?</td>
+                  );
+                  const [chipClass, label] = chipEntry;
                   return (
                     <td key={d} style={{ padding: '8px 10px', textAlign: 'center' }}>
                       <span
