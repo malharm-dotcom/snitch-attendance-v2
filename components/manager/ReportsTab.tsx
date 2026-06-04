@@ -4,12 +4,19 @@ import { useState } from 'react';
 import { DEPARTMENTS, FACILITIES, ATTENDANCE_STATUSES } from '@/lib/constants';
 import { istDateString } from '@/lib/ist';
 import { useToast } from '../shared/Toast';
+import DeptPivotTable from './DeptPivotTable';
 
 interface ReportsTabProps {
   facility: string;
 }
 
-type ReportType = 'daily' | 'range' | 'employees';
+type ReportType = 'daily' | 'range' | 'employees' | 'pivot';
+
+interface PivotResult {
+  rows: { department: string; statusCounts: Record<string, number>; total: number }[];
+  grandTotals: Record<string, number>;
+  grandTotal: number;
+}
 
 function downloadCSV(data: Record<string, unknown>[], filename: string) {
   if (!data.length) return;
@@ -32,29 +39,29 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
   const [deptFilter, setDeptFilter] = useState('');
   const [data, setData] = useState<Record<string, unknown>[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pivotData, setPivotData] = useState<PivotResult | null>(null);
   const { showToast } = useToast();
 
   async function runReport() {
     setLoading(true);
     setData(null);
+    setPivotData(null);
     try {
       let url = '';
-      let filename = 'report.csv';
 
       if (reportType === 'daily') {
         const params = new URLSearchParams({ date, facility });
         if (shift) params.append('shift', shift);
         url = `/api/reports/daily-summary?${params}`;
-        filename = `daily-summary-${date}.csv`;
       } else if (reportType === 'range') {
         const params = new URLSearchParams({ from_date: fromDate, to_date: toDate, facility });
         if (deptFilter) params.append('department', deptFilter);
         if (shift) params.append('shift', shift);
         url = `/api/reports/range?${params}`;
-        filename = `attendance-${fromDate}-to-${toDate}.csv`;
+      } else if (reportType === 'pivot') {
+        url = `/api/reports/department-pivot?from=${fromDate}&to=${toDate}`;
       } else {
         url = `/api/reports/employees?facility=${facility}`;
-        filename = `employees-${facility}.csv`;
       }
 
       const res = await fetch(url);
@@ -63,10 +70,14 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
         throw new Error(err.error || `Report failed (${res.status})`);
       }
       const json = await res.json();
-      const rows = json.rows ?? json.employees ?? [];
-      setData(rows);
-      if (rows.length === 0) {
-        showToast('No data found for this filter', 'info');
+
+      if (reportType === 'pivot') {
+        setPivotData(json);
+        if (!json.rows?.length) showToast('No data found for this filter', 'info');
+      } else {
+        const rows = json.rows ?? json.employees ?? [];
+        setData(rows);
+        if (rows.length === 0) showToast('No data found for this filter', 'info');
       }
     } catch (err: unknown) {
       showToast((err as Error).message || 'Failed to load report', 'error');
@@ -84,6 +95,7 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
         {([
           { id: 'daily', label: 'Daily Summary' },
           { id: 'range', label: 'Date Range' },
+          { id: 'pivot', label: 'Dept Pivot' },
           { id: 'employees', label: 'Employee Master' },
         ] as { id: ReportType; label: string }[]).map((r) => (
           <button
@@ -126,7 +138,7 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
           </>
         )}
 
-        {reportType === 'range' && (
+        {(reportType === 'range' || reportType === 'pivot') && (
           <>
             <div>
               <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>From</label>
@@ -136,21 +148,25 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
               <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>To</label>
               <input type="date" value={toDate} min={fromDate} max={today} onChange={(e) => setToDate(e.target.value)} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13 }} />
             </div>
-            <div>
-              <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Department</label>
-              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13, background: 'var(--surface)' }}>
-                <option value="">All departments</option>
-                {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Shift</label>
-              <select value={shift} onChange={(e) => setShift(e.target.value)} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13, background: 'var(--surface)' }}>
-                <option value="">All shifts</option>
-                <option value="Day">Day</option>
-                <option value="Night">Night</option>
-              </select>
-            </div>
+            {reportType === 'range' && (
+              <>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Department</label>
+                  <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13, background: 'var(--surface)' }}>
+                    <option value="">All departments</option>
+                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Shift</label>
+                  <select value={shift} onChange={(e) => setShift(e.target.value)} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13, background: 'var(--surface)' }}>
+                    <option value="">All shifts</option>
+                    <option value="Day">Day</option>
+                    <option value="Night">Night</option>
+                  </select>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -209,7 +225,15 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
         </>
       )}
 
-      {!loading && data && data.length === 0 && (
+      {!loading && pivotData && pivotData.rows.length > 0 && (
+        <DeptPivotTable
+          rows={pivotData.rows}
+          grandTotals={pivotData.grandTotals}
+          grandTotal={pivotData.grandTotal}
+        />
+      )}
+
+      {!loading && (data?.length === 0 || pivotData?.rows.length === 0) && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)', fontFamily: 'var(--mono)', fontSize: 13 }}>
           No data for the selected filters
         </div>
