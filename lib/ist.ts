@@ -31,3 +31,11 @@ export function parseISTDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(new Date(`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T00:00:00+05:30`));
 }
+
+/** Formats a PostgreSQL DATE value as YYYY-MM-DD using UTC components, with no timezone shift applied. */
+export function formatAttendanceDate(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}

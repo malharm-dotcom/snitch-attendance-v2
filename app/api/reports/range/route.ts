@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isSouth } from '@/lib/auth';
-import { parseISTDate } from '@/lib/ist';
+import { parseISTDate, formatAttendanceDate, istTimestamp } from '@/lib/ist';
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,7 +62,17 @@ export async function GET(request: NextRequest) {
       ORDER BY d.attendance_date, h.facility, h.department, d.employee_name
     `, parseISTDate(from_date), parseISTDate(to_date));
 
-    return NextResponse.json({ rows });
+    const formatted = rows.map((r) => ({
+      ...r,
+      ATTENDANCE_DATE: r.ATTENDANCE_DATE instanceof Date
+        ? formatAttendanceDate(r.ATTENDANCE_DATE)
+        : r.ATTENDANCE_DATE,
+      MARKED_AT: r.MARKED_AT instanceof Date
+        ? istTimestamp(r.MARKED_AT)
+        : r.MARKED_AT,
+    }));
+
+    return NextResponse.json({ rows: formatted });
   } catch (error) {
     console.error('GET /api/reports/range error:', error);
     return NextResponse.json({ error: (error as Error).message ?? 'Failed to generate range report' }, { status: 500 });
