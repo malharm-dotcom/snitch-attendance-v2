@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isSouth } from '@/lib/auth';
+import { parseISTDate } from '@/lib/ist';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
     const department = searchParams.get('department') ?? '';
     const departments = searchParams.get('departments') ?? '';
     const shift = searchParams.get('shift') ?? '';
+    const date = searchParams.get('date') ?? '';
 
     const deptList = departments
       ? departments.split(',').map((d) => d.trim()).filter(Boolean)
@@ -45,16 +47,57 @@ export async function GET(request: NextRequest) {
       orderBy: [{ department: 'asc' }, { employeeName: 'asc' }],
     });
 
+    // Build existing-status map from the most recent AttendanceHeader for this date/facility/dept/shift.
+    // Headers are ordered newest-first; first occurrence of each employee_code wins.
+    const statusMap = new Map<string, { status: string; remarks: string | null }>();
+    if (date) {
+      const parsedDate = parseISTDate(date);
+      const headers = await prisma.attendanceHeader.findMany({
+        where: {
+          facility: facilityFilter,
+          department: deptList.length === 1 ? deptList[0] : { in: deptList },
+          attendanceDate: parsedDate,
+          ...(shift ? { shift } : {}),
+        },
+        orderBy: { markedAt: 'desc' },
+        include: {
+          details: {
+            select: {
+              employeeCode: true,
+              attendanceStatus: true,
+              remarks: true,
+            },
+          },
+        },
+      });
+
+      for (const header of headers) {
+        for (const detail of header.details) {
+          if (!statusMap.has(detail.employeeCode)) {
+            statusMap.set(detail.employeeCode, {
+              status: detail.attendanceStatus,
+              remarks: detail.remarks ?? null,
+            });
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
-      employees: employees.map((e) => ({
-        id: e.id,
-        employee_code: e.employeeCode,
-        employee_name: e.employeeName,
-        facility: e.facility,
-        department: e.department,
-        shift: e.shift,
-        designation: e.designation,
-      })),
+      employees: employees.map((e) => {
+        const existing = statusMap.get(e.employeeCode);
+        return {
+          id: e.id,
+          employee_code: e.employeeCode,
+          employee_name: e.employeeName,
+          facility: e.facility,
+          department: e.department,
+          shift: e.shift,
+          designation: e.designation,
+          existing_status: existing?.status ?? null,
+          existing_remarks: existing?.remarks ?? null,
+        };
+      }),
     });
   } catch (error) {
     console.error('GET /api/employees error:', error);

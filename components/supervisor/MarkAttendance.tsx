@@ -65,17 +65,17 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
 
     try {
       const [empRes, checkRes] = await Promise.all([
-        fetch(`/api/employees?facility=${facility}&departments=${departments.join(',')}&shift=${shift}`),
+        fetch(`/api/employees?facility=${facility}&departments=${departments.join(',')}&shift=${shift}&date=${date}`),
         fetch(`/api/attendance/check?facility=${facility}&department=${departments[0]}&attendance_date=${date}&shift=${shift}`),
       ]);
 
       const empData = await empRes.json();
       const checkData = await checkRes.json();
 
-      const loaded: EmployeeEntry[] = (empData.employees ?? []).map((e: EmployeeEntry) => ({
+      const loaded: EmployeeEntry[] = (empData.employees ?? []).map((e: EmployeeEntry & { existing_status?: string | null; existing_remarks?: string | null }) => ({
         ...e,
-        attendance_status: 'Present',
-        remarks: '',
+        attendance_status: e.existing_status ?? 'Present',
+        remarks: e.existing_remarks ?? '',
       }));
 
       setEmployees(loaded);

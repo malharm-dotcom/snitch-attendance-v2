@@ -43,6 +43,11 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
     setRequests(data.requests ?? []);
   }, []);
 
+  // Pre-fetch pending count on mount so the badge is visible without navigating to the tab
+  useEffect(() => {
+    loadRequests('pending');
+  }, [loadRequests]);
+
   useEffect(() => {
     if (activeTab === 'pending') loadRequests('pending');
     else if (activeTab === 'resolved') loadRequests();
