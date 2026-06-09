@@ -16,6 +16,11 @@ interface Submission {
   shift: string | null;
 }
 
+interface DeptCount {
+  department: string;
+  count: number;
+}
+
 interface TodayStatusGridProps {
   facility: string;
 }
@@ -24,6 +29,7 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
   const today = istDateString();
   const [date, setDate] = useState(today);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [deptCounts, setDeptCounts] = useState<DeptCount[]>([]);
   const [loading, setLoading] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailDept, setDetailDept] = useState<string | null>(null);
@@ -39,8 +45,10 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
       const res = await fetch(`/api/today-status?attendance_date=${date}`);
       const data = await res.json();
       setSubmissions(data.submissions ?? []);
+      setDeptCounts(data.deptCounts ?? []);
     } catch {
       setSubmissions([]);
+      setDeptCounts([]);
     } finally {
       setLoading(false);
     }
@@ -61,10 +69,11 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
   }
 
   const submissionMap = new Map(submissions.map((s) => [`${s.facility}|${s.department}`, s]));
+  const employeeCountMap = new Map(deptCounts.map((d) => [d.department, d.count]));
 
-  const total = DEPARTMENTS.length;
-  const submitted = DEPARTMENTS.filter((dept) => submissions.some((s) => s.department === dept)).length;
-  const pending = total - submitted;
+  const activeDepts = DEPARTMENTS.filter((dept) => (employeeCountMap.get(dept) ?? 0) > 0);
+  const submitted = activeDepts.filter((dept) => submissions.some((s) => s.department === dept)).length;
+  const pending = activeDepts.length - submitted;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -91,12 +100,14 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
           {DEPARTMENTS.map((dept) => {
             const sub = submissions.find((s) => s.department === dept) ?? null;
+            const hasEmployees = (employeeCountMap.get(dept) ?? 0) > 0;
             return (
               <DeptCard
                 key={dept}
                 facility={facility}
                 department={dept}
                 submission={sub}
+                hasEmployees={hasEmployees}
                 onClick={() => openDetail(dept)}
                 attendanceDate={date}
               />

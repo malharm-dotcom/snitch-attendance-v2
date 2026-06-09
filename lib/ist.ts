@@ -26,10 +26,10 @@ export function istTimestamp(date?: Date): string {
   }) + ' IST';
 }
 
-/** Parses a YYYY-MM-DD string into a Date at midnight IST. */
+/** Parses a YYYY-MM-DD string into a Date at midnight UTC (calendar-date safe, no timezone shift). */
 export function parseISTDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(new Date(`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T00:00:00+05:30`));
+  return new Date(Date.UTC(y, m - 1, d));
 }
 
 /** Formats a PostgreSQL DATE value as YYYY-MM-DD using UTC components, with no timezone shift applied. */

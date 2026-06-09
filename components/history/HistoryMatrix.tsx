@@ -100,7 +100,7 @@ export default function HistoryMatrix({ records, searchQuery, statusFilter }: Hi
               </th>
               {dates.map((d) => (
                 <th key={d} style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 500, borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-2)' }}>
-                  {new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                  {new Date(d + 'T12:00:00Z').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                 </th>
               ))}
             </tr>

@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         FROM attendance_detail d2
         JOIN attendance_header h2 ON d2.attendance_header_id = h2.id
         WHERE ${facilityClause} ${deptClause} ${shiftClause}
-          AND d2.attendance_date BETWEEN $1 AND $2
+          AND d2.attendance_date BETWEEN $1::date AND $2::date
       ) sub
       JOIN attendance_detail d ON d.id = sub.id
       JOIN attendance_header h ON h.id = sub.hid

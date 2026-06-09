@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { parseISTDate } from '@/lib/ist';
+import { parseISTDate, formatAttendanceDate } from '@/lib/ist';
 import { isSouth } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -56,7 +56,14 @@ export async function GET(request: NextRequest) {
       ORDER BY sub.attendance_date, sub.employee_name
     `, department, parsedFrom, parsedTo);
 
-    return NextResponse.json({ records });
+    const formatted = records.map((r) => ({
+      ...r,
+      ATTENDANCE_DATE: r.ATTENDANCE_DATE instanceof Date
+        ? formatAttendanceDate(r.ATTENDANCE_DATE as Date)
+        : r.ATTENDANCE_DATE,
+    }));
+
+    return NextResponse.json({ records: formatted });
   } catch (error) {
     console.error('GET /api/attendance/history-range error:', error);
     return NextResponse.json({ error: (error as Error).message ?? 'Failed to fetch history range' }, { status: 500 });

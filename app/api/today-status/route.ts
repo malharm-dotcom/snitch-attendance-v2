@@ -49,7 +49,19 @@ export async function GET(request: NextRequest) {
         shift: h.shift,
       }));
 
-    return NextResponse.json({ submissions });
+    const deptCounts = await prisma.employee.groupBy({
+      by: ['department'],
+      where: {
+        isActive: true,
+        ...(facilityFilter ? { facility: facilityFilter } : {}),
+      },
+      _count: { _all: true },
+    });
+
+    return NextResponse.json({
+      submissions,
+      deptCounts: deptCounts.map((r) => ({ department: r.department, count: r._count._all })),
+    });
   } catch (error) {
     console.error('GET /api/today-status error:', error);
     return NextResponse.json({ error: 'Failed to fetch today status' }, { status: 500 });

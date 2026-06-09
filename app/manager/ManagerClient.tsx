@@ -11,7 +11,8 @@ import OfflineBanner from '@/components/shared/OfflineBanner';
 import BulkUploadTab from '@/components/manager/BulkUploadTab';
 import ReportsTab from '@/components/manager/ReportsTab';
 
-type Tab = 'pending' | 'resolved' | 'log' | 'employees' | 'reports';
+type Tab = 'pending' | 'resolved' | 'records' | 'employees';
+type RecordsTab = 'log' | 'reports';
 
 interface Props {
   supervisorName: string;
@@ -22,18 +23,18 @@ interface Props {
 }
 
 function ManagerInner({ supervisorName, facility, role }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('log');
+  const [activeTab, setActiveTab] = useState<Tab>('records');
   const [requests, setRequests] = useState<RewriteRequest[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [logView, setLogView] = useState<'daily' | 'matrix'>('daily');
+  const [recordsTab, setRecordsTab] = useState<RecordsTab>('log');
   const { showToast } = useToast();
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'log', label: 'Attendance Log' },
-    { id: 'employees', label: 'Employees' },
-    { id: 'reports', label: 'Reports' },
     { id: 'pending', label: 'Pending' },
     { id: 'resolved', label: 'Resolved' },
+    { id: 'records', label: 'Records' },
+    { id: 'employees', label: 'Employees' },
   ];
 
   const loadRequests = useCallback(async (status?: string) => {
@@ -174,40 +175,60 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
           </div>
         )}
 
-        {/* Attendance log tab */}
-        {activeTab === 'log' && (
-          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {activeTab === 'records' && (
+          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div style={{ display: 'flex', gap: 8 }}>
-              {(['daily', 'matrix'] as const).map((v) => (
+              {(['log', 'reports'] as const).map((v) => (
                 <button
                   key={v}
-                  onClick={() => setLogView(v)}
+                  onClick={() => setRecordsTab(v)}
                   style={{
                     padding: '7px 16px',
                     border: '1.5px solid var(--border)',
                     borderRadius: 6,
-                    background: logView === v ? 'var(--text)' : 'var(--surface)',
-                    color: logView === v ? '#fff' : 'var(--text-2)',
+                    background: recordsTab === v ? 'var(--text)' : 'var(--surface)',
+                    color: recordsTab === v ? '#fff' : 'var(--text-2)',
                     fontFamily: 'var(--mono)',
                     fontSize: 13,
                     cursor: 'pointer',
-                    textTransform: 'capitalize',
                   }}
                 >
-                  {v}
+                  {v === 'log' ? 'Attendance Log' : 'Reports'}
                 </button>
               ))}
             </div>
-            {logView === 'daily' ? (
-              <TodayStatusGrid facility={facility} />
-            ) : (
-              <ManagerMatrix facility={facility} />
+
+            {recordsTab === 'log' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(['daily', 'matrix'] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setLogView(v)}
+                      style={{
+                        padding: '7px 16px',
+                        border: '1.5px solid var(--border)',
+                        borderRadius: 6,
+                        background: logView === v ? 'var(--text)' : 'var(--surface)',
+                        color: logView === v ? '#fff' : 'var(--text-2)',
+                        fontFamily: 'var(--mono)',
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+                {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix facility={facility} />}
+              </div>
             )}
+            {recordsTab === 'reports' && <ReportsTab facility={facility} />}
           </div>
         )}
 
         {activeTab === 'employees' && <div className="tab-panel"><BulkUploadTab /></div>}
-        {activeTab === 'reports' && <div className="tab-panel"><ReportsTab facility={facility} /></div>}
       </main>
     </>
   );

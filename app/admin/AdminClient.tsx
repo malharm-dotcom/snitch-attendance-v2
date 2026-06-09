@@ -16,7 +16,8 @@ import OfflineBanner from '@/components/shared/OfflineBanner';
 import SupervisorsTab from '@/components/admin/SupervisorsTab';
 import EmployeesTab from '@/components/admin/EmployeesTab';
 
-type Tab = 'mark' | 'history' | 'pending' | 'resolved' | 'log' | 'employees' | 'reports' | 'supervisors';
+type Tab = 'mark' | 'pending' | 'resolved' | 'records' | 'employees' | 'supervisors';
+type RecordsTab = 'log' | 'history' | 'reports';
 
 interface Props {
   supervisorName: string;
@@ -34,16 +35,15 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
   const [requests, setRequests] = useState<RewriteRequest[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [logView, setLogView] = useState<'daily' | 'matrix'>('daily');
+  const [recordsTab, setRecordsTab] = useState<RecordsTab>('log');
   const { showToast } = useToast();
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'mark', label: 'Mark Attendance' },
-    { id: 'history', label: 'History' },
     { id: 'pending', label: 'Pending Requests' },
     { id: 'resolved', label: 'Resolved' },
-    { id: 'log', label: 'Attendance Log' },
+    { id: 'records', label: 'Records' },
     { id: 'employees', label: 'Employees' },
-    { id: 'reports', label: 'Reports' },
     { id: 'supervisors', label: 'Supervisors' },
   ];
 
@@ -157,11 +157,6 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
             <MarkAttendance supervisorName={supervisorName} facility={facility} departments={[currentDept]} shift={shift} />
           </div>
         )}
-        {activeTab === 'history' && (
-          <div className="tab-panel">
-            <HistoryPanel facility={facility} departments={[currentDept]} />
-          </div>
-        )}
         {activeTab === 'pending' && (
           <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <BulkToolbar
@@ -188,20 +183,46 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
             {resolvedRequests.map((r) => <RequestCard key={r.request_id} request={r} />)}
           </div>
         )}
-        {activeTab === 'log' && (
-          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['daily', 'matrix'] as const).map((v) => (
-                <button key={v} onClick={() => setLogView(v)} style={{ padding: '7px 16px', border: '1.5px solid var(--border)', borderRadius: 6, background: logView === v ? 'var(--text)' : 'var(--surface)', color: logView === v ? '#fff' : 'var(--text-2)', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
-                  {v}
+        {activeTab === 'records' && (
+          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(['log', 'history', 'reports'] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setRecordsTab(v)}
+                  style={{
+                    padding: '7px 16px',
+                    border: '1.5px solid var(--border)',
+                    borderRadius: 6,
+                    background: recordsTab === v ? 'var(--text)' : 'var(--surface)',
+                    color: recordsTab === v ? '#fff' : 'var(--text-2)',
+                    fontFamily: 'var(--mono)',
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {v === 'log' ? 'Attendance Log' : v === 'history' ? 'History' : 'Reports'}
                 </button>
               ))}
             </div>
-            {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix facility={facility} />}
+
+            {recordsTab === 'log' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(['daily', 'matrix'] as const).map((v) => (
+                    <button key={v} onClick={() => setLogView(v)} style={{ padding: '7px 16px', border: '1.5px solid var(--border)', borderRadius: 6, background: logView === v ? 'var(--text)' : 'var(--surface)', color: logView === v ? '#fff' : 'var(--text-2)', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
+                      {v}
+                    </button>
+                  ))}
+                </div>
+                {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix facility={facility} />}
+              </div>
+            )}
+            {recordsTab === 'history' && <HistoryPanel facility={facility} departments={[currentDept]} />}
+            {recordsTab === 'reports' && <ReportsTab facility={facility} />}
           </div>
         )}
         {activeTab === 'employees' && <div className="tab-panel"><EmployeesTab /></div>}
-        {activeTab === 'reports' && <div className="tab-panel"><ReportsTab facility={facility} /></div>}
         {activeTab === 'supervisors' && <div className="tab-panel"><SupervisorsTab /></div>}
       </main>
     </>

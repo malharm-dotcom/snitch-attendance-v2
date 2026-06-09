@@ -14,12 +14,15 @@ interface DeptCardProps {
   facility: string;
   department: string;
   submission: Submission | null;
+  hasEmployees: boolean;
   onClick: () => void;
   attendanceDate?: string;
 }
 
-export default function DeptCard({ facility, department, submission, onClick, attendanceDate }: DeptCardProps) {
+export default function DeptCard({ facility, department, submission, hasEmployees, onClick, attendanceDate }: DeptCardProps) {
   const submitted = !!submission;
+
+  const noEmployees = !hasEmployees && !submitted;
 
   return (
     <div
@@ -31,6 +34,7 @@ export default function DeptCard({ facility, department, submission, onClick, at
         borderRadius: 'var(--r)',
         padding: '14px',
         cursor: 'pointer',
+        opacity: noEmployees ? 0.55 : 1,
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         transition: 'box-shadow 0.15s',
       }}
@@ -48,10 +52,10 @@ export default function DeptCard({ facility, department, submission, onClick, at
           padding: '3px 8px',
           borderRadius: 20,
           fontWeight: 600,
-          background: submitted ? 'var(--success-bg)' : 'var(--surface2)',
-          color: submitted ? 'var(--success)' : 'var(--text-3)',
+          background: submitted ? 'var(--success-bg)' : noEmployees ? 'var(--surface2)' : 'var(--surface2)',
+          color: submitted ? 'var(--success)' : noEmployees ? 'var(--text-3)' : 'var(--warn)',
         }}>
-          {submitted ? '✓ Submitted' : 'Pending'}
+          {submitted ? '✓ Submitted' : noEmployees ? 'No employees' : 'Pending'}
         </span>
       </div>
 
