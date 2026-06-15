@@ -7,7 +7,7 @@ export const DEPARTMENTS = [
 
 export const ATTENDANCE_STATUSES = [
   'Present', 'LOP', 'Week Off', 'Half Day', 'Holiday',
-  'Work On Holiday', 'Sick Leave', 'Paid Leave', 'Unpaid Leave',
+  'Work On Holiday', 'Work on Week Off', 'Sick Leave', 'Paid Leave', 'Unpaid Leave',
   'Maternity Leave', 'Paternity Leave', 'Bereavement Leave', 'Compensatory Off',
 ];
 
@@ -25,6 +25,7 @@ export const STATUS_CLASSES: Record<string, string> = {
   'Unpaid Leave': 'unplanned-leave',
   'Holiday': 'holiday',
   'Work On Holiday': 'present',
+  'Work on Week Off': 'present',
   'Maternity Leave': 'leave',
   'Paternity Leave': 'leave',
   'Bereavement Leave': 'leave',
@@ -39,6 +40,7 @@ export const MATRIX_CHIP_LABELS: Record<string, [string, string]> = {
   'Half Day':          ['half',    '½'],
   'Holiday':           ['holiday', 'HOL'],
   'Work On Holiday':   ['present', 'WOH'],
+  'Work on Week Off':  ['present', 'WOW'],
   'Sick Leave':        ['leave',   'SL'],
   'Paid Leave':        ['leave',   'PL'],
   'Unpaid Leave':      ['absent',  'UL'],

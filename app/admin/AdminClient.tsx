@@ -5,7 +5,6 @@ import { ToastProvider, useToast } from '@/components/shared/Toast';
 import Topbar from '@/components/shared/Topbar';
 import SessionBanner from '@/components/supervisor/SessionBanner';
 import MarkAttendance from '@/components/supervisor/MarkAttendance';
-import HistoryPanel from '@/components/supervisor/HistoryPanel';
 import RequestCard, { type RewriteRequest } from '@/components/manager/RequestCard';
 import BulkToolbar from '@/components/manager/BulkToolbar';
 import TodayStatusGrid from '@/components/manager/TodayStatusGrid';
@@ -17,7 +16,7 @@ import SupervisorsTab from '@/components/admin/SupervisorsTab';
 import EmployeesTab from '@/components/admin/EmployeesTab';
 
 type Tab = 'mark' | 'pending' | 'resolved' | 'records' | 'employees' | 'supervisors';
-type RecordsTab = 'log' | 'history' | 'reports';
+type RecordsTab = 'log' | 'reports';
 
 interface Props {
   supervisorName: string;
@@ -186,7 +185,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
         {activeTab === 'records' && (
           <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {(['log', 'history', 'reports'] as const).map((v) => (
+              {(['log', 'reports'] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setRecordsTab(v)}
@@ -201,7 +200,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
                     cursor: 'pointer',
                   }}
                 >
-                  {v === 'log' ? 'Attendance Log' : v === 'history' ? 'History' : 'Reports'}
+                  {v === 'log' ? 'Attendance Log' : 'Reports'}
                 </button>
               ))}
             </div>
@@ -210,15 +209,14 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(['daily', 'matrix'] as const).map((v) => (
-                    <button key={v} onClick={() => setLogView(v)} style={{ padding: '7px 16px', border: '1.5px solid var(--border)', borderRadius: 6, background: logView === v ? 'var(--text)' : 'var(--surface)', color: logView === v ? '#fff' : 'var(--text-2)', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer', textTransform: 'capitalize' }}>
-                      {v}
+                    <button key={v} onClick={() => setLogView(v)} style={{ padding: '7px 16px', border: '1.5px solid var(--border)', borderRadius: 6, background: logView === v ? 'var(--text)' : 'var(--surface)', color: logView === v ? '#fff' : 'var(--text-2)', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}>
+                      {v === 'matrix' ? 'Employee View' : 'Daily'}
                     </button>
                   ))}
                 </div>
                 {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix facility={facility} />}
               </div>
             )}
-            {recordsTab === 'history' && <HistoryPanel facility={facility} departments={[currentDept]} />}
             {recordsTab === 'reports' && <ReportsTab facility={facility} />}
           </div>
         )}

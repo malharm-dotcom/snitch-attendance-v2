@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DEPARTMENTS, FACILITIES, ATTENDANCE_STATUSES } from '@/lib/constants';
+import { DEPARTMENTS } from '@/lib/constants';
 import { istDateString } from '@/lib/ist';
 import { useToast } from '../shared/Toast';
 import DeptPivotTable from './DeptPivotTable';
@@ -10,7 +10,7 @@ interface ReportsTabProps {
   facility: string;
 }
 
-type ReportType = 'daily' | 'range' | 'employees' | 'pivot';
+type ReportType = 'daily' | 'range' | 'pivot';
 
 interface PivotResult {
   rows: { department: string; statusCounts: Record<string, number>; total: number }[];
@@ -60,8 +60,6 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
         url = `/api/reports/range?${params}`;
       } else if (reportType === 'pivot') {
         url = `/api/reports/department-pivot?from=${fromDate}&to=${toDate}`;
-      } else {
-        url = `/api/reports/employees?facility=${facility}`;
       }
 
       const res = await fetch(url);
@@ -93,10 +91,9 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
       {/* Report type selector */}
       <div style={{ display: 'flex', gap: 4, background: 'var(--surface2)', padding: 3, borderRadius: 'var(--r)', width: 'fit-content' }}>
         {([
+          { id: 'range', label: 'Raw Table' },
           { id: 'daily', label: 'Daily Summary' },
-          { id: 'range', label: 'Date Range' },
           { id: 'pivot', label: 'Dept Pivot' },
-          { id: 'employees', label: 'Employee Master' },
         ] as { id: ReportType; label: string }[]).map((r) => (
           <button
             key={r.id}

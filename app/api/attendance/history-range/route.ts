@@ -24,7 +24,12 @@ export async function GET(request: NextRequest) {
     const parsedFrom = parseISTDate(from_date);
     const parsedTo = parseISTDate(to_date);
 
-    // $2::date and $3::date cast TIMESTAMPTZ params to DATE for correct DATE BETWEEN DATE comparison
+    const allDepts = department === '__all__';
+    const deptClause = allDepts ? '' : `AND h2.department = $1`;
+    const fromParam = allDepts ? '$1::date' : '$2::date';
+    const toParam   = allDepts ? '$2::date' : '$3::date';
+    const queryParams: unknown[] = allDepts ? [parsedFrom, parsedTo] : [department, parsedFrom, parsedTo];
+
     const records = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
         d.employee_code      AS "EMPLOYEE_CODE",
@@ -47,14 +52,14 @@ export async function GET(request: NextRequest) {
         FROM attendance_detail d2
         JOIN attendance_header h2 ON d2.attendance_header_id = h2.id
         WHERE ${facilityClause}
-          AND h2.department = $1
-          AND d2.attendance_date BETWEEN $2::date AND $3::date
+          ${deptClause}
+          AND d2.attendance_date BETWEEN ${fromParam} AND ${toParam}
       ) AS sub
       JOIN attendance_detail d ON d.id = sub.id
       JOIN attendance_header h ON h.id = sub.hid
       WHERE sub.rn = 1
       ORDER BY sub.attendance_date, sub.employee_name
-    `, department, parsedFrom, parsedTo);
+    `, ...queryParams);
 
     const formatted = records.map((r) => ({
       ...r,

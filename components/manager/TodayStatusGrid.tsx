@@ -25,9 +25,12 @@ interface TodayStatusGridProps {
   facility: string;
 }
 
+type ShiftFilter = 'All' | 'Day' | 'Night';
+
 export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
   const today = istDateString();
   const [date, setDate] = useState(today);
+  const [shiftFilter, setShiftFilter] = useState<ShiftFilter>('All');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [deptCounts, setDeptCounts] = useState<DeptCount[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,6 +78,13 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
   const submitted = activeDepts.filter((dept) => submissions.some((s) => s.department === dept)).length;
   const pending = activeDepts.length - submitted;
 
+  const visibleDepts = shiftFilter === 'All'
+    ? DEPARTMENTS
+    : DEPARTMENTS.filter((dept) => {
+        const sub = submissions.find((s) => s.department === dept);
+        return !sub || sub.shift === shiftFilter || sub.shift === null;
+      });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -85,6 +95,27 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
           onChange={(e) => setDate(e.target.value)}
           style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13 }}
         />
+        <div style={{ display: 'flex', gap: 2, background: 'var(--surface2)', borderRadius: 20, padding: 3 }}>
+          {(['All', 'Day', 'Night'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setShiftFilter(s)}
+              style={{
+                padding: '5px 14px',
+                border: 'none',
+                borderRadius: 20,
+                fontFamily: 'var(--mono)',
+                fontSize: 12,
+                cursor: 'pointer',
+                background: shiftFilter === s ? 'var(--text)' : 'transparent',
+                color: shiftFilter === s ? '#fff' : 'var(--text-2)',
+                transition: 'all 0.15s',
+              }}
+            >
+              {s === 'Day' ? '☀ Day' : s === 'Night' ? '🌙 Night' : 'All'}
+            </button>
+          ))}
+        </div>
         <div style={{ display: 'flex', gap: 12, fontFamily: 'var(--mono)', fontSize: 13 }}>
           <span style={{ color: 'var(--success)', fontWeight: 600 }}>{submitted} submitted</span>
           <span style={{ color: 'var(--text-3)' }}>·</span>
@@ -98,7 +129,7 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-          {DEPARTMENTS.map((dept) => {
+          {visibleDepts.map((dept) => {
             const sub = submissions.find((s) => s.department === dept) ?? null;
             const hasEmployees = (employeeCountMap.get(dept) ?? 0) > 0;
             return (

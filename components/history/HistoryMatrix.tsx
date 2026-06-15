@@ -8,6 +8,9 @@ interface HistoryMatrixProps {
   records: HistoryRecord[];
   searchQuery: string;
   statusFilter: string;
+  fromDate?: string;
+  toDate?: string;
+  showSummary?: boolean;
 }
 
 interface TooltipState {
@@ -19,7 +22,7 @@ interface TooltipState {
   date: string;
 }
 
-export default function HistoryMatrix({ records, searchQuery, statusFilter }: HistoryMatrixProps) {
+export default function HistoryMatrix({ records, searchQuery, statusFilter, fromDate, toDate, showSummary = false }: HistoryMatrixProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
   const { employees, dates, matrix } = useMemo(() => {
@@ -47,6 +50,28 @@ export default function HistoryMatrix({ records, searchQuery, statusFilter }: Hi
     return { employees, dates, matrix: mat };
   }, [records]);
 
+  const totalDays = useMemo(() => {
+    if (!showSummary || !fromDate || !toDate) return 0;
+    return (
+      Math.round(
+        (new Date(toDate + 'T00:00:00Z').getTime() - new Date(fromDate + 'T00:00:00Z').getTime()) / 86400000
+      ) + 1
+    );
+  }, [showSummary, fromDate, toDate]);
+
+  function getSummary(code: string) {
+    const present = dates.filter((d) => {
+      const s = matrix.get(code)?.get(d)?.ATTENDANCE_STATUS;
+      return s === 'Present' || s === 'Work on Week Off';
+    }).length;
+    const lop = dates.filter((d) => {
+      const s = matrix.get(code)?.get(d)?.ATTENDANCE_STATUS;
+      return s === 'LOP' || s === 'Unpaid Leave';
+    }).length;
+    const absent = Math.max(0, totalDays - present - lop);
+    return { present, lop, absent };
+  }
+
   const filteredEmployees = useMemo(() => {
     return employees.filter((e) => {
       const q = searchQuery.toLowerCase();
@@ -60,11 +85,14 @@ export default function HistoryMatrix({ records, searchQuery, statusFilter }: Hi
   }, [employees, searchQuery, statusFilter, dates, matrix]);
 
   function downloadCSV() {
-    const headers = ['Employee Code', 'Employee Name', ...dates];
-    const rows = filteredEmployees.map((e) => [
-      e.code, e.name,
-      ...dates.map((d) => matrix.get(e.code)?.get(d)?.ATTENDANCE_STATUS ?? ''),
-    ]);
+    const summaryHeaders = showSummary ? ['Present', 'LOP', 'Total Days', 'Absent'] : [];
+    const headers = ['Employee Code', 'Employee Name', ...dates, ...summaryHeaders];
+    const rows = filteredEmployees.map((e) => {
+      const dateCols = dates.map((d) => matrix.get(e.code)?.get(d)?.ATTENDANCE_STATUS ?? '');
+      if (!showSummary) return [e.code, e.name, ...dateCols];
+      const { present, lop, absent } = getSummary(e.code);
+      return [e.code, e.name, ...dateCols, present, lop, totalDays, absent];
+    });
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -103,6 +131,14 @@ export default function HistoryMatrix({ records, searchQuery, statusFilter }: Hi
                   {new Date(d + 'T12:00:00Z').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                 </th>
               ))}
+              {showSummary && (
+                <>
+                  <th style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid var(--border)', borderLeft: '2px solid var(--border)', whiteSpace: 'nowrap', background: 'var(--surface2)', color: 'var(--success)', fontSize: 11, textTransform: 'uppercase' }}>Present</th>
+                  <th style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap', background: 'var(--surface2)', color: 'var(--danger)', fontSize: 11, textTransform: 'uppercase' }}>LOP</th>
+                  <th style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap', background: 'var(--surface2)', color: 'var(--text-2)', fontSize: 11, textTransform: 'uppercase' }}>/{totalDays}d</th>
+                  <th style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap', background: 'var(--surface2)', color: 'var(--warn)', fontSize: 11, textTransform: 'uppercase' }}>Absent</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -137,6 +173,18 @@ export default function HistoryMatrix({ records, searchQuery, statusFilter }: Hi
                     </td>
                   );
                 })}
+                {showSummary && (() => {
+                  const { present, lop, absent } = getSummary(emp.code);
+                  const cellBase: React.CSSProperties = { padding: '8px 12px', textAlign: 'center', fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 12, background: 'var(--surface2)' };
+                  return (
+                    <>
+                      <td style={{ ...cellBase, borderLeft: '2px solid var(--border)', color: 'var(--success)' }}>{present}</td>
+                      <td style={{ ...cellBase, color: 'var(--danger)' }}>{lop}</td>
+                      <td style={{ ...cellBase, color: 'var(--text-2)', fontWeight: 500 }}>{totalDays}</td>
+                      <td style={{ ...cellBase, color: 'var(--warn)' }}>{absent}</td>
+                    </>
+                  );
+                })()}
               </tr>
             ))}
             {filteredEmployees.length === 0 && (

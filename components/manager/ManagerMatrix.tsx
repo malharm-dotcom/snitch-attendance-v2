@@ -6,6 +6,8 @@ import { istDateString } from '@/lib/ist';
 import { DEPARTMENTS } from '@/lib/constants';
 import type { HistoryRecord } from '@/lib/types';
 
+const ALL_DEPTS = '__all__';
+
 interface ManagerMatrixProps {
   facility: string;
 }
@@ -16,14 +18,14 @@ export default function ManagerMatrix({ facility }: ManagerMatrixProps) {
 
   const [fromDate, setFromDate] = useState(sevenAgo);
   const [toDate, setToDate] = useState(today);
-  const [department, setDepartment] = useState('');
+  const [department, setDepartment] = useState(ALL_DEPTS);
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   async function load() {
-    if (!department) return;
+    if (!department && department !== ALL_DEPTS) return;
     setLoading(true);
     try {
       const res = await fetch(
@@ -45,6 +47,7 @@ export default function ManagerMatrix({ facility }: ManagerMatrixProps) {
           <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Department</label>
           <select value={department} onChange={(e) => setDepartment(e.target.value)} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13, background: 'var(--surface)' }}>
             <option value="">Select department</option>
+            <option value={ALL_DEPTS}>All departments</option>
             {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
@@ -59,7 +62,7 @@ export default function ManagerMatrix({ facility }: ManagerMatrixProps) {
         <button
           onClick={load}
           disabled={loading || !department}
-          style={{ padding: '9px 20px', background: !department ? 'var(--surface2)' : 'var(--accent)', color: !department ? 'var(--text-3)' : 'var(--accent-text)', border: 'none', borderRadius: 'var(--r)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: !department ? 'not-allowed' : 'pointer' }}
+          style={{ padding: '9px 20px', background: !department ? 'var(--surface2)' : 'var(--accent)', color: !department ? 'var(--text-3)' : 'var(--accent-text)', border: 'none', borderRadius: 'var(--r)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: !department ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}
         >
           {loading ? 'Loading...' : 'View'}
         </button>
@@ -79,7 +82,7 @@ export default function ManagerMatrix({ facility }: ManagerMatrixProps) {
       )}
 
       {!loading && records.length > 0 && (
-        <HistoryMatrix records={records} searchQuery={searchQuery} statusFilter={statusFilter} />
+        <HistoryMatrix records={records} searchQuery={searchQuery} statusFilter={statusFilter} fromDate={fromDate} toDate={toDate} showSummary />
       )}
 
       {!loading && records.length === 0 && (

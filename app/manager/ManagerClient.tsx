@@ -214,10 +214,9 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
                         fontFamily: 'var(--mono)',
                         fontSize: 13,
                         cursor: 'pointer',
-                        textTransform: 'capitalize',
                       }}
                     >
-                      {v}
+                      {v === 'matrix' ? 'Employee View' : 'Daily'}
                     </button>
                   ))}
                 </div>
