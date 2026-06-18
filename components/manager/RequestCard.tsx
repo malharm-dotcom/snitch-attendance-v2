@@ -7,6 +7,7 @@ export interface RewriteRequest {
   attendance_date: string;
   facility: string;
   department: string;
+  employee_code: string | null;
   supervisor_name: string;
   reason: string;
   request_status: string;
@@ -54,6 +55,11 @@ export default function RequestCard({ request, selected, onToggleSelect, onActio
           <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', background: 'var(--surface2)', padding: '2px 8px', borderRadius: 20 }}>
             {request.facility} · {request.department}
           </span>
+          {request.employee_code && (
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent)', background: 'rgba(79,70,229,0.08)', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>
+              {request.employee_code}
+            </span>
+          )}
           <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)' }}>
             {String(request.attendance_date).slice(0, 10)}
           </span>

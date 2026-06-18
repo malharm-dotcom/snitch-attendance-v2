@@ -32,10 +32,12 @@ model Employee {
   shift            String?  @db.VarChar(10)
   designation      String?  @db.VarChar(100)
   reportingManager String?  @map("reporting_manager") @db.VarChar(200)
-  rollType         String?  @map("roll_type") @db.VarChar(20)
-  gender           String?  @db.VarChar(10)
-  isActive         Boolean  @default(true) @map("is_active")
-  loadedAt         DateTime @default(now()) @map("loaded_at")
+  rollType         String?   @map("roll_type") @db.VarChar(20)
+  gender           String?   @db.VarChar(10)
+  isActive         Boolean   @default(true) @map("is_active")
+  joiningDate      DateTime? @map("joining_date") @db.Date
+  exitDate         DateTime? @map("exit_date") @db.Date
+  loadedAt         DateTime  @default(now()) @map("loaded_at")
 
   attendanceDetails AttendanceDetail[]
 
@@ -80,6 +82,7 @@ model AttendanceRewriteRequest {
   attendanceDate DateTime  @map("attendance_date") @db.Date
   facility       String    @db.VarChar(50)
   department     String    @db.VarChar(100)
+  employeeCode   String?   @map("employee_code") @db.VarChar(50)
   supervisorName String    @map("supervisor_name") @db.VarChar(200)
   reason         String    @db.Text
   requestStatus  String    @default("pending") @map("request_status") @db.VarChar(20)

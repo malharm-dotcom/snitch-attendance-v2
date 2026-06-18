@@ -8,27 +8,35 @@ interface RewriteRequestBody {
   department: string;
   supervisor_name: string;
   reason: string;
+  employee_codes: string[];
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: RewriteRequestBody = await request.json();
-    const { attendance_date, facility, department, supervisor_name, reason } = body;
+    const { attendance_date, facility, department, supervisor_name, reason, employee_codes } = body;
 
     if (!attendance_date || !facility || !department || !supervisor_name || !reason) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
+    if (!Array.isArray(employee_codes) || employee_codes.length === 0) {
+      return NextResponse.json({ error: 'At least one employee_code is required' }, { status: 400 });
+    }
 
-    await prisma.attendanceRewriteRequest.create({
-      data: {
-        attendanceDate: parseISTDate(attendance_date),
+    const parsedDate = parseISTDate(attendance_date);
+    const requestedAt = istNow();
+
+    await prisma.attendanceRewriteRequest.createMany({
+      data: employee_codes.map((code) => ({
+        attendanceDate: parsedDate,
         facility,
         department,
+        employeeCode: code,
         supervisorName: supervisor_name,
         reason,
         requestStatus: 'pending',
-        requestedAt: istNow(),
-      },
+        requestedAt,
+      })),
     });
 
     return NextResponse.json({ success: true });

@@ -8,4 +8,6 @@ export interface HistoryRecord {
   FACILITY: string;
   DEPARTMENT: string;
   ATTENDANCE_DATE?: string;
+  JOINING_DATE?: string;  // YYYY-MM-DD or '' — only present when API joins employees table
+  EXIT_DATE?: string;     // YYYY-MM-DD or '' — only present when API joins employees table
 }

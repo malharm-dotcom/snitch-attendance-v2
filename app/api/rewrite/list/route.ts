@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
         attendance_date: r.attendanceDate,
         facility: r.facility,
         department: r.department,
+        employee_code: r.employeeCode,
         supervisor_name: r.supervisorName,
         reason: r.reason,
         request_status: r.requestStatus,

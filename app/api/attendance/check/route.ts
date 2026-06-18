@@ -35,24 +35,45 @@ export async function GET(request: NextRequest) {
         marked_at: null,
         request_status: null,
         shift: null,
+        approved_employee_codes: [],
+        legacy_all_approved: false,
+        rewrite_summary: null,
       });
     }
 
-    const rewriteReq = await prisma.attendanceRewriteRequest.findFirst({
-      where: {
-        facility: facilityFilter,
-        department,
-        attendanceDate: parsedDate,
-      },
+    const rewriteReqs = await prisma.attendanceRewriteRequest.findMany({
+      where: { facility: facilityFilter, department, attendanceDate: parsedDate },
       orderBy: { id: 'desc' },
     });
+
+    // Build status summary counts
+    const summary: Record<string, number> = {};
+    for (const r of rewriteReqs) {
+      summary[r.requestStatus] = (summary[r.requestStatus] ?? 0) + 1;
+    }
+
+    // Legacy: a NULL employee_code row that is approved unlocks all employees
+    const legacyAllApproved = rewriteReqs.some(
+      (r) => r.employeeCode === null && r.requestStatus === 'approved',
+    );
+
+    // Per-employee approved codes (only from rows that have an employee_code)
+    const approvedEmployeeCodes = rewriteReqs
+      .filter((r) => r.employeeCode !== null && r.requestStatus === 'approved')
+      .map((r) => r.employeeCode as string);
+
+    // Most-recent request status for backward compat (e.g. SubmissionBanner fallback)
+    const request_status = rewriteReqs.length > 0 ? rewriteReqs[0].requestStatus : null;
 
     return NextResponse.json({
       submitted: true,
       marked_by: header.markedBy,
       marked_at: header.markedAt,
-      request_status: rewriteReq?.requestStatus ?? null,
+      request_status,
       shift: header.shift,
+      approved_employee_codes: legacyAllApproved ? null : approvedEmployeeCodes,
+      legacy_all_approved: legacyAllApproved,
+      rewrite_summary: rewriteReqs.length > 0 ? summary : null,
     });
   } catch (error) {
     console.error('GET /api/attendance/check error:', error);

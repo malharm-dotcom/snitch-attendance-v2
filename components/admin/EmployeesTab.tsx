@@ -17,6 +17,8 @@ interface EmployeeRow {
   rollType: string | null;
   gender: string | null;
   isActive: boolean;
+  joiningDate: string | null;  // YYYY-MM-DD from API
+  exitDate: string | null;     // YYYY-MM-DD from API
 }
 
 interface EditForm {
@@ -30,6 +32,21 @@ interface EditForm {
   rollType: string;
   gender: string;
   reportingManager: string;
+  exitDate: string;       // YYYY-MM-DD or '' — required when isActive=false
+  joiningDate: string | null;  // read-only, used for exit_date >= joining_date validation
+}
+
+interface AddForm {
+  employeeCode: string;
+  employeeName: string;
+  facility: string;
+  department: string;
+  joiningDate: string;
+  shift: string;
+  designation: string;
+  rollType: string;
+  gender: string;
+  reportingManager: string;
 }
 
 type CsvRow = Record<string, string>;
@@ -38,6 +55,16 @@ const REQUIRED_HEADERS = [
   'employee_code', 'employee_name', 'facility', 'department',
   'is_active', 'shift', 'designation', 'reporting_manager', 'roll_type', 'gender',
 ];
+
+// Export includes payroll dates; template does not (bulk-upload doesn't accept them)
+const EXPORT_HEADERS = [...REQUIRED_HEADERS, 'joining_date', 'exit_date'];
+
+function formatDDMMYYYY(s: string | null | undefined): string {
+  if (!s) return '';
+  const parts = s.split('-');
+  if (parts.length !== 3) return '';
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
 
 const EXAMPLE_ROW: CsvRow = {
   employee_code: 'SAPL00001',
@@ -133,7 +160,9 @@ export default function EmployeesTab() {
   const [isSouthAdmin, setIsSouthAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [addForm, setAddForm] = useState<AddForm | null>(null);
   const [saving, setSaving] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [search, setSearch] = useState('');
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -181,10 +210,12 @@ export default function EmployeesTab() {
         reporting_manager: String(e.reporting_manager ?? e.reportingManager ?? ''),
         roll_type: String(e.roll_type ?? e.rollType ?? ''),
         gender: String(e.gender ?? ''),
+        joining_date: String(e.joining_date ?? e.joiningDate ?? ''),
+        exit_date: String(e.exit_date ?? e.exitDate ?? ''),
       }));
       const date = istDateString();
       const facility = currentFacility || (json.scope ?? 'all');
-      downloadBlob(toCSV(REQUIRED_HEADERS, mapped), `employees_${facility}_${date}.csv`);
+      downloadBlob(toCSV(EXPORT_HEADERS, mapped), `employees_${facility}_${date}.csv`);
       showToast(`Downloaded ${mapped.length} employees`, 'success');
     } catch {
       showToast('Failed to export employee data', 'error');
@@ -196,7 +227,6 @@ export default function EmployeesTab() {
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Reset input so the same file can be re-selected if needed
     e.target.value = '';
 
     const text = await file.text();
@@ -219,12 +249,61 @@ export default function EmployeesTab() {
         `Uploaded: ${upserted} upserted, ${errCount} errors`,
         errCount > 0 ? 'error' : 'success',
       );
-      // Reload table so newly upserted employees are visible
       load();
     } catch {
       showToast('Upload failed', 'error');
     } finally {
       setUploading(false);
+    }
+  }
+
+  function openAdd() {
+    setAddForm({
+      employeeCode: '',
+      employeeName: '',
+      facility: isSouthAdmin ? 'WH1' : currentFacility,
+      department: DEPARTMENTS[0] ?? '',
+      joiningDate: '',
+      shift: '',
+      designation: '',
+      rollType: '',
+      gender: '',
+      reportingManager: '',
+    });
+  }
+
+  async function handleAdd() {
+    if (!addForm) return;
+    if (!addForm.employeeCode.trim()) { showToast('Employee code is required', 'error'); return; }
+    if (!addForm.employeeName.trim()) { showToast('Employee name is required', 'error'); return; }
+    if (!addForm.joiningDate) { showToast('Joining date is required', 'error'); return; }
+
+    setAdding(true);
+    try {
+      const res = await fetch('/api/admin/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_code: addForm.employeeCode.trim(),
+          employee_name: addForm.employeeName.trim(),
+          facility: addForm.facility,
+          department: addForm.department,
+          joining_date: addForm.joiningDate,
+          shift: addForm.shift || null,
+          designation: addForm.designation || null,
+          reporting_manager: addForm.reportingManager || null,
+          roll_type: addForm.rollType || null,
+          gender: addForm.gender || null,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      showToast('Employee added', 'success');
+      setAddForm(null);
+      load();
+    } catch (err: unknown) {
+      showToast((err as Error).message || 'Add failed', 'error');
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -240,11 +319,28 @@ export default function EmployeesTab() {
       rollType: emp.rollType ?? '',
       gender: emp.gender ?? '',
       reportingManager: emp.reportingManager ?? '',
+      exitDate: emp.exitDate ?? '',
+      joiningDate: emp.joiningDate ?? null,
     });
   }
 
   async function saveEdit() {
     if (!editForm) return;
+
+    // exit_date is mandatory when marking inactive
+    if (!editForm.isActive && !editForm.exitDate) {
+      showToast('Exit date is required when marking an employee inactive', 'error');
+      return;
+    }
+
+    // Client-side date order validation
+    if (!editForm.isActive && editForm.exitDate && editForm.joiningDate) {
+      if (editForm.exitDate < editForm.joiningDate) {
+        showToast(`Exit date must be on or after joining date (${editForm.joiningDate})`, 'error');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const res = await fetch('/api/admin/employees', {
@@ -261,10 +357,12 @@ export default function EmployeesTab() {
           roll_type: editForm.rollType || null,
           gender: editForm.gender || null,
           reporting_manager: editForm.reportingManager || null,
+          // When reactivating, send null to clear; when marking inactive, send the date
+          exit_date: editForm.isActive ? null : (editForm.exitDate || null),
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      // Patch local state — no full reload needed
+
       setEmployees((prev) => prev.map((e) =>
         e.employeeCode === editForm.employeeCode
           ? {
@@ -278,6 +376,7 @@ export default function EmployeesTab() {
               rollType: editForm.rollType || null,
               gender: editForm.gender || null,
               reportingManager: editForm.reportingManager || null,
+              exitDate: editForm.isActive ? null : (editForm.exitDate || null),
             }
           : e,
       ));
@@ -299,7 +398,19 @@ export default function EmployeesTab() {
     );
   });
 
-  const COLUMNS = ['Code', 'Name', 'Facility', 'Department', 'Designation', 'Shift', 'Roll Type', 'Gender', 'Status', ''];
+  const COLUMNS = ['Code', 'Name', 'Facility', 'Department', 'Designation', 'Shift', 'Roll Type', 'Gender', 'Joining Date', 'Exit Date', 'Status', ''];
+
+  const modalOverlay: React.CSSProperties = {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 1000, padding: 16, animation: 'fadeIn 0.15s ease',
+  };
+  const modalBox: React.CSSProperties = {
+    background: 'var(--surface)', borderRadius: 'var(--r)', padding: '28px 32px',
+    width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto',
+    display: 'flex', flexDirection: 'column', gap: 16,
+    boxShadow: '0 8px 40px rgba(0,0,0,0.2)',
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -339,18 +450,19 @@ export default function EmployeesTab() {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          style={{ ...btnStyle, borderColor: uploading ? 'var(--border)' : 'var(--border)', color: uploading ? 'var(--text-3)' : 'var(--text)', cursor: uploading ? 'not-allowed' : 'pointer' }}
+          style={{ ...btnStyle, cursor: uploading ? 'not-allowed' : 'pointer', color: uploading ? 'var(--text-3)' : 'var(--text)' }}
         >
           {uploading ? 'Uploading...' : '↑ Upload CSV'}
         </button>
 
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".csv"
-          onChange={handleFile}
-          style={{ display: 'none' }}
-        />
+        <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }} />
+
+        <button
+          onClick={openAdd}
+          style={{ ...btnStyle, borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 700 }}
+        >
+          + Add Employee
+        </button>
       </div>
 
       {/* Upload result errors */}
@@ -411,6 +523,12 @@ export default function EmployeesTab() {
                   <td style={{ padding: '10px 12px', color: e.shift ? 'var(--text)' : 'var(--text-3)' }}>{e.shift ?? <em>—</em>}</td>
                   <td style={{ padding: '10px 12px', color: e.rollType ? 'var(--text)' : 'var(--text-3)' }}>{e.rollType ?? <em>—</em>}</td>
                   <td style={{ padding: '10px 12px', color: e.gender ? 'var(--text)' : 'var(--text-3)' }}>{e.gender ?? <em>—</em>}</td>
+                  <td style={{ padding: '10px 12px', color: e.joiningDate ? 'var(--text)' : 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>
+                    {e.joiningDate ? formatDDMMYYYY(e.joiningDate) : <em>—</em>}
+                  </td>
+                  <td style={{ padding: '10px 12px', color: e.exitDate ? 'var(--text)' : 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>
+                    {e.exitDate ? formatDDMMYYYY(e.exitDate) : <em>—</em>}
+                  </td>
                   <td style={{ padding: '10px 12px' }}>
                     <span style={{ color: e.isActive ? 'var(--success)' : 'var(--text-3)', fontSize: 11 }}>
                       {e.isActive ? '● Active' : '○ Inactive'}
@@ -440,16 +558,163 @@ export default function EmployeesTab() {
         </div>
       )}
 
-      {/* Edit modal */}
+      {/* ── Add Employee modal ── */}
+      {addForm && (
+        <div style={modalOverlay}>
+          <div style={modalBox}>
+            <div>
+              <h3 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, margin: 0 }}>Add Employee</h3>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+                All fields marked * are required
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Employee Code *">
+                <input
+                  value={addForm.employeeCode}
+                  onChange={(e) => setAddForm({ ...addForm, employeeCode: e.target.value })}
+                  placeholder="e.g. SAPL00999"
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
+                />
+              </Field>
+
+              <Field label="Employee Name *">
+                <input
+                  value={addForm.employeeName}
+                  onChange={(e) => setAddForm({ ...addForm, employeeName: e.target.value })}
+                  placeholder="Full name"
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
+                />
+              </Field>
+
+              <Field label="Facility">
+                {isSouthAdmin ? (
+                  <select
+                    value={addForm.facility}
+                    onChange={(e) => setAddForm({ ...addForm, facility: e.target.value })}
+                    style={{ ...inputStyle, color: 'var(--text)' }}
+                  >
+                    {['WH1', 'WH2'].map((f) => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                ) : (
+                  <div style={{ ...inputStyle, background: 'var(--surface2)', color: 'var(--text-2)', cursor: 'default' }}>
+                    {addForm.facility}
+                  </div>
+                )}
+              </Field>
+
+              <Field label="Department">
+                <select
+                  value={addForm.department}
+                  onChange={(e) => setAddForm({ ...addForm, department: e.target.value })}
+                  style={{ ...inputStyle, color: 'var(--text)' }}
+                >
+                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </Field>
+
+              <Field label="Joining Date *">
+                <input
+                  type="date"
+                  value={addForm.joiningDate}
+                  onChange={(e) => setAddForm({ ...addForm, joiningDate: e.target.value })}
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
+                />
+              </Field>
+
+              <Field label="Shift">
+                <select
+                  value={addForm.shift}
+                  onChange={(e) => setAddForm({ ...addForm, shift: e.target.value })}
+                  style={{ ...inputStyle, color: 'var(--text)' }}
+                >
+                  <option value="">— not set —</option>
+                  {SHIFTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </Field>
+
+              <Field label="Designation">
+                <input
+                  value={addForm.designation}
+                  onChange={(e) => setAddForm({ ...addForm, designation: e.target.value })}
+                  placeholder="e.g. Executive"
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
+                />
+              </Field>
+
+              <Field label="Roll Type">
+                <select
+                  value={addForm.rollType}
+                  onChange={(e) => setAddForm({ ...addForm, rollType: e.target.value })}
+                  style={{ ...inputStyle, color: 'var(--text)' }}
+                >
+                  <option value="">— not set —</option>
+                  {ROLL_TYPES.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </Field>
+
+              <Field label="Gender">
+                <select
+                  value={addForm.gender}
+                  onChange={(e) => setAddForm({ ...addForm, gender: e.target.value })}
+                  style={{ ...inputStyle, color: 'var(--text)' }}
+                >
+                  <option value="">— not set —</option>
+                  {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </Field>
+
+              <Field label="Reporting Manager">
+                <input
+                  value={addForm.reportingManager}
+                  onChange={(e) => setAddForm({ ...addForm, reportingManager: e.target.value })}
+                  placeholder="Manager name"
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
+                />
+              </Field>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button
+                onClick={() => setAddForm(null)}
+                style={{ padding: '9px 18px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdd}
+                disabled={adding}
+                style={{ padding: '9px 18px', border: 'none', borderRadius: 8, background: adding ? 'var(--surface2)' : 'var(--accent)', color: adding ? 'var(--text-3)' : 'var(--accent-text)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: adding ? 'not-allowed' : 'pointer' }}
+              >
+                {adding ? 'Adding...' : 'Add Employee'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit modal ── */}
       {editForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16, animation: 'fadeIn 0.15s ease' }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--r)', padding: '28px 32px', width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
+        <div style={modalOverlay}>
+          <div style={modalBox}>
             <div>
               <h3 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, margin: 0 }}>
                 Edit — {editForm.employeeName}
               </h3>
               <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
                 {editForm.employeeCode}
+                {editForm.joiningDate && ` · Joined ${editForm.joiningDate}`}
               </div>
             </div>
 
@@ -546,16 +811,52 @@ export default function EmployeesTab() {
               </Field>
             </div>
 
-            <Field label="Status">
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={editForm.isActive}
-                  onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
-                />
-                Active
-              </label>
-            </Field>
+            {/* Status + exit date — full width */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Field label="Status">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={editForm.isActive}
+                    onChange={(e) => setEditForm({
+                      ...editForm,
+                      isActive: e.target.checked,
+                      // Clear exit date when reactivating
+                      exitDate: e.target.checked ? '' : editForm.exitDate,
+                    })}
+                  />
+                  Active
+                </label>
+              </Field>
+
+              {/* Exit date — required when marking inactive */}
+              {!editForm.isActive && (
+                <Field label="Exit Date *">
+                  <input
+                    type="date"
+                    value={editForm.exitDate}
+                    min={editForm.joiningDate ?? undefined}
+                    onChange={(e) => setEditForm({ ...editForm, exitDate: e.target.value })}
+                    style={{
+                      ...inputStyle,
+                      borderColor: !editForm.exitDate ? 'var(--danger)' : 'var(--border)',
+                    }}
+                    onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
+                    onBlur={(e) => { e.target.style.borderColor = editForm.exitDate ? 'var(--border)' : 'var(--danger)'; }}
+                  />
+                  {!editForm.exitDate && (
+                    <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>
+                      Required when marking inactive
+                    </div>
+                  )}
+                  {editForm.joiningDate && (
+                    <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+                      Must be on or after joining date ({editForm.joiningDate})
+                    </div>
+                  )}
+                </Field>
+              )}
+            </div>
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <button

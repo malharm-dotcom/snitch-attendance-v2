@@ -35,6 +35,8 @@ export async function GET(request: NextRequest) {
       SELECT
         d.employee_code      AS "EMPLOYEE_CODE",
         d.employee_name      AS "EMPLOYEE_NAME",
+        COALESCE(TO_CHAR(e.joining_date, 'YYYY-MM-DD'), '') AS "JOINING_DATE",
+        COALESCE(TO_CHAR(e.exit_date,    'YYYY-MM-DD'), '') AS "EXIT_DATE",
         d.attendance_status  AS "ATTENDANCE_STATUS",
         d.remarks            AS "REMARKS",
         h.marked_by          AS "MARKED_BY",
@@ -58,6 +60,7 @@ export async function GET(request: NextRequest) {
       ) sub
       JOIN attendance_detail d ON d.id = sub.id
       JOIN attendance_header h ON h.id = sub.hid
+      LEFT JOIN employees e ON e.employee_code = d.employee_code
       WHERE sub.rn = 1
       ORDER BY d.attendance_date, h.facility, h.department, d.employee_name
     `, parseISTDate(from_date), parseISTDate(to_date));

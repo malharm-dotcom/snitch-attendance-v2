@@ -82,7 +82,7 @@ export default function ManagerMatrix({ facility }: ManagerMatrixProps) {
       )}
 
       {!loading && records.length > 0 && (
-        <HistoryMatrix records={records} searchQuery={searchQuery} statusFilter={statusFilter} fromDate={fromDate} toDate={toDate} showSummary />
+        <HistoryMatrix records={records} searchQuery={searchQuery} statusFilter={statusFilter} fromDate={fromDate} toDate={toDate} showSummary showPayrollDates />
       )}
 
       {!loading && records.length === 0 && (

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const south = isSouth(facility);
-    // h2 is the alias used inside the subquery — h.* would cause "missing FROM-clause entry"
+    // h2 is the alias used inside the subquery
     const facilityClause = south
       ? `h2.facility IN ('WH1','WH2')`
       : `h2.facility = '${facility.replace(/'/g, "''")}'`;
@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
       SELECT
         d.employee_code      AS "EMPLOYEE_CODE",
         d.employee_name      AS "EMPLOYEE_NAME",
+        COALESCE(TO_CHAR(e.joining_date, 'YYYY-MM-DD'), '') AS "JOINING_DATE",
+        COALESCE(TO_CHAR(e.exit_date,    'YYYY-MM-DD'), '') AS "EXIT_DATE",
         d.attendance_status  AS "ATTENDANCE_STATUS",
         d.remarks            AS "REMARKS",
         h.marked_by          AS "MARKED_BY",
@@ -57,6 +59,7 @@ export async function GET(request: NextRequest) {
       ) AS sub
       JOIN attendance_detail d ON d.id = sub.id
       JOIN attendance_header h ON h.id = sub.hid
+      LEFT JOIN employees e ON e.employee_code = d.employee_code
       WHERE sub.rn = 1
       ORDER BY sub.attendance_date, sub.employee_name
     `, ...queryParams);

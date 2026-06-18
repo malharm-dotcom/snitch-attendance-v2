@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession, isSouth } from '@/lib/auth';
+import { formatAttendanceDate } from '@/lib/ist';
 
 export async function GET() {
   try {
@@ -22,7 +23,14 @@ export async function GET() {
       orderBy: [{ facility: 'asc' }, { department: 'asc' }, { employeeName: 'asc' }],
     });
 
-    return NextResponse.json({ employees, scope: south ? 'south' : 'north' });
+    return NextResponse.json({
+      employees: employees.map((e) => ({
+        ...e,
+        joiningDate: e.joiningDate ? formatAttendanceDate(e.joiningDate) : null,
+        exitDate: e.exitDate ? formatAttendanceDate(e.exitDate) : null,
+      })),
+      scope: south ? 'south' : 'north',
+    });
   } catch (error) {
     console.error('GET /api/reports/employees error:', error);
     return NextResponse.json({ error: (error as Error).message ?? 'Failed to fetch employee report' }, { status: 500 });

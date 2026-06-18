@@ -17,6 +17,10 @@ interface CheckStatus {
   marked_at: string | null;
   request_status: string | null;
   shift: string | null;
+  // Per-employee rewrite data. null means legacy: a NULL-code approved row unlocks all.
+  approved_employee_codes: string[] | null;
+  legacy_all_approved: boolean;
+  rewrite_summary: Record<string, number> | null;
 }
 
 interface MarkAttendanceProps {
@@ -40,20 +44,34 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
   const [submitting, setSubmitting] = useState(false);
   const [rewriteOpen, setRewriteOpen] = useState(false);
   const [rewriteReason, setRewriteReason] = useState('');
+  const [selectedForRewrite, setSelectedForRewrite] = useState<Set<string>>(new Set());
   const [confirmFilterOpen, setConfirmFilterOpen] = useState(false);
   const { showToast } = useToast();
 
-  // Designation filter state — search query does NOT count; only designation chips
   const designationFilterActive = selectedDesignations.size > 0;
   const activeDesignationNames = Array.from(selectedDesignations).join(', ');
 
-  // Derived submission/blocking state
+  // Per-employee approval state
+  const approvedCodes = useMemo(
+    () => new Set(checkStatus?.approved_employee_codes ?? []),
+    [checkStatus],
+  );
+  const legacyAllApproved = checkStatus?.legacy_all_approved === true;
+
   const isPastDate = date < today;
   const isPastCutoff = new Date(Date.now() + 5.5 * 3600000).getUTCHours() >= ATTENDANCE_CUTOFF_HOUR_IST;
-  const isRewriteApproved = checkStatus?.request_status === 'approved';
-  // Past-date block lifts when a rewrite is approved; cutoff always blocks
-  const isBlocked = (isPastDate && !isRewriteApproved) || isPastCutoff;
   const alreadySubmitted = !!checkStatus?.submitted;
+
+  function isEmployeeBlocked(code: string): boolean {
+    if (isPastCutoff) return true;
+    if (!isPastDate) return false;
+    if (legacyAllApproved) return false;
+    return !approvedCodes.has(code);
+  }
+
+  const someApproved = legacyAllApproved || approvedCodes.size > 0;
+  // True if at least one employee can be edited (gates submit button + bulk controls)
+  const anyUnlocked = !isPastCutoff && (!isPastDate || someApproved);
 
   async function loadEmployees() {
     setLoading(true);
@@ -88,13 +106,11 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     }
   }
 
-  // Auto-reload when shift changes if employees are already on screen
   useEffect(() => {
     if (prevShiftRef.current !== shift && employees.length > 0) {
       loadEmployees();
     }
     prevShiftRef.current = shift;
-  // loadEmployees intentionally omitted — it's stable per render, shift is the trigger
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shift]);
 
@@ -191,6 +207,9 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
         marked_at: new Date().toISOString(),
         request_status: null,
         shift,
+        approved_employee_codes: [],
+        legacy_all_approved: false,
+        rewrite_summary: null,
       });
       showToast('Attendance submitted!', 'success');
     } catch (err: unknown) {
@@ -200,10 +219,16 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     }
   }
 
+  function openRewriteModal() {
+    setSelectedForRewrite(new Set());
+    setRewriteReason('');
+    setRewriteOpen(true);
+  }
+
   async function handleRewriteSubmit() {
-    if (!rewriteReason.trim()) return;
+    if (!rewriteReason.trim() || selectedForRewrite.size === 0) return;
     try {
-      await fetch('/api/rewrite/request', {
+      const res = await fetch('/api/rewrite/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -212,14 +237,25 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
           department: departments[0],
           supervisor_name: supervisorName,
           reason: rewriteReason,
+          employee_codes: Array.from(selectedForRewrite),
         }),
       });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Request failed');
+
       setRewriteOpen(false);
       setRewriteReason('');
-      setCheckStatus((prev) => prev ? { ...prev, request_status: 'pending' } : prev);
+      setSelectedForRewrite(new Set());
+
+      // Reload check status to reflect updated per-employee summary
+      const checkRes = await fetch(
+        `/api/attendance/check?facility=${facility}&department=${departments[0]}&attendance_date=${date}&shift=${shift}`
+      );
+      const checkData = await checkRes.json();
+      setCheckStatus(checkData);
+
       showToast('Edit request submitted', 'success');
-    } catch {
-      showToast('Failed to submit request', 'error');
+    } catch (err: unknown) {
+      showToast((err as Error).message || 'Failed to submit request', 'error');
     }
   }
 
@@ -233,6 +269,19 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     color: 'var(--warn)',
     lineHeight: 1.6,
   };
+
+  // Rewrite employee list (only employees currently loaded, for the modal)
+  const rewriteEmployeeList = employees;
+  const allRewriteSelected = rewriteEmployeeList.length > 0 &&
+    rewriteEmployeeList.every((e) => selectedForRewrite.has(e.employee_code));
+
+  function toggleAllRewrite() {
+    if (allRewriteSelected) {
+      setSelectedForRewrite(new Set());
+    } else {
+      setSelectedForRewrite(new Set(rewriteEmployeeList.map((e) => e.employee_code)));
+    }
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -269,10 +318,20 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
         </button>
       </div>
 
-      {/* Blocked warning banner (past date or past cutoff) */}
-      {(isPastDate && !isRewriteApproved) && (
+      {/* Past-date warning — shown when no employees are approved yet */}
+      {isPastDate && !legacyAllApproved && employees.length === 0 && (
         <div style={warnBannerStyle}>
-          ⚠ Past date selected. You cannot submit attendance directly for past dates. Use the Rewrite Request tab to request a correction.
+          ⚠ Past date selected. You cannot submit attendance directly for past dates. Use the &quot;Request Edit&quot; button after loading employees to request a correction for specific employees.
+        </div>
+      )}
+      {isPastDate && !legacyAllApproved && employees.length > 0 && !someApproved && (
+        <div style={warnBannerStyle}>
+          ⚠ Past date — all employees are locked. Use &quot;Request Edit&quot; to select specific employees for a rewrite request.
+        </div>
+      )}
+      {isPastDate && !legacyAllApproved && employees.length > 0 && someApproved && (
+        <div style={warnBannerStyle}>
+          ⚠ Past date — {approvedCodes.size} employee{approvedCodes.size !== 1 ? 's' : ''} approved for rewrite. Others remain locked.
         </div>
       )}
       {isPastCutoff && !isPastDate && (
@@ -287,7 +346,8 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
           markedBy={checkStatus.marked_by!}
           markedAt={checkStatus.marked_at!}
           requestStatus={checkStatus.request_status}
-          onRequestRewrite={() => setRewriteOpen(true)}
+          rewriteSummary={checkStatus.rewrite_summary}
+          onRequestRewrite={openRewriteModal}
         />
       )}
 
@@ -320,7 +380,8 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ flex: 1, minWidth: 180, padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 13 }}
             />
-            {!isBlocked && (
+            {/* Bulk status buttons only available when not a past date (avoids confusion with mixed locked states) */}
+            {!isPastDate && !isPastCutoff && (
               <>
                 <button onClick={() => setAllStatus('Present')} style={{ padding: '7px 14px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer', background: 'var(--surface)' }}>All Present</button>
                 <button onClick={() => setAllStatus('Week Off')} style={{ padding: '7px 14px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer', background: 'var(--surface)' }}>All Week Off</button>
@@ -400,7 +461,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
                 employee={emp}
                 searchQuery={searchQuery}
                 onChange={updateEmployee}
-                disabled={isBlocked}
+                disabled={isEmployeeBlocked(emp.employee_code)}
               />
             ))}
             {filtered.length === 0 && (
@@ -410,10 +471,9 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
             )}
           </div>
 
-          {/* Submit button — hidden when already submitted without an approved rewrite */}
-          {!isBlocked && (!alreadySubmitted || isRewriteApproved) && (
+          {/* Submit button — visible when at least one employee is unlocked */}
+          {anyUnlocked && (!alreadySubmitted || someApproved) && (
             <>
-              {/* Designation-filter warning — shown only when chips are active */}
               {designationFilterActive && (
                 <div style={{ ...warnBannerStyle, fontSize: 12 }}>
                   ⚠ Designation filter active — showing {filtered.length} of {employees.length} employees.
@@ -427,9 +487,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
                 disabled={submitting}
                 style={{
                   padding: '13px',
-                  background: submitting
-                    ? 'var(--surface2)'
-                    : 'var(--accent)',
+                  background: submitting ? 'var(--surface2)' : 'var(--accent)',
                   color: submitting ? 'var(--text-3)' : '#fff',
                   border: 'none',
                   borderRadius: 'var(--r)',
@@ -441,7 +499,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
               >
                 {submitting
                   ? 'Submitting...'
-                  : (alreadySubmitted && isRewriteApproved)
+                  : (alreadySubmitted && someApproved)
                     ? 'Resubmit Attendance'
                     : designationFilterActive
                       ? `Submit All ${employees.length} Employees`
@@ -489,29 +547,101 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
         </p>
       </Modal>
 
-      {/* Rewrite modal */}
+      {/* Rewrite modal — per-employee selection */}
       <Modal
         open={rewriteOpen}
         onClose={() => setRewriteOpen(false)}
         title="Request Attendance Edit"
         actions={
           <>
-            <button onClick={() => setRewriteOpen(false)} style={{ padding: '8px 16px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-            <button onClick={handleRewriteSubmit} style={{ padding: '8px 16px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--accent-text)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Submit Request</button>
+            <button
+              onClick={() => setRewriteOpen(false)}
+              style={{ padding: '8px 16px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleRewriteSubmit}
+              disabled={selectedForRewrite.size === 0 || !rewriteReason.trim()}
+              style={{
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: 8,
+                background: selectedForRewrite.size === 0 || !rewriteReason.trim() ? 'var(--surface2)' : 'var(--accent)',
+                color: selectedForRewrite.size === 0 || !rewriteReason.trim() ? 'var(--text-3)' : 'var(--accent-text)',
+                fontFamily: 'var(--display)',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: selectedForRewrite.size === 0 || !rewriteReason.trim() ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Submit Request{selectedForRewrite.size > 0 ? ` (${selectedForRewrite.size})` : ''}
+            </button>
           </>
         }
       >
-        <p style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)', marginTop: 0 }}>
-          Explain why you need to edit attendance for {date}:
-        </p>
-        <textarea
-          value={rewriteReason}
-          onChange={(e) => setRewriteReason(e.target.value)}
-          placeholder="Reason for edit request..."
-          rows={4}
-          style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 13, resize: 'vertical' }}
-          autoFocus
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Employee selection */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                Select employees
+              </span>
+              <button
+                onClick={toggleAllRewrite}
+                style={{ padding: '3px 10px', border: '1.5px solid var(--border)', borderRadius: 20, fontFamily: 'var(--mono)', fontSize: 11, cursor: 'pointer', background: 'none', color: 'var(--text-2)' }}
+              >
+                {allRewriteSelected ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, border: '1.5px solid var(--border)', borderRadius: 8, padding: '6px 8px' }}>
+              {rewriteEmployeeList.map((emp) => (
+                <label
+                  key={emp.employee_code}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 4px', cursor: 'pointer', borderRadius: 6, transition: 'background 0.1s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface2)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedForRewrite.has(emp.employee_code)}
+                    onChange={() => {
+                      setSelectedForRewrite((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(emp.employee_code)) next.delete(emp.employee_code);
+                        else next.add(emp.employee_code);
+                        return next;
+                      });
+                    }}
+                    style={{ width: 15, height: 15, flexShrink: 0, cursor: 'pointer' }}
+                  />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--display)', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {emp.employee_name}
+                    </div>
+                    <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--text-3)' }}>
+                      {emp.employee_code}{emp.designation ? ` · ${emp.designation}` : ''}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+              Reason for edit request
+            </label>
+            <textarea
+              value={rewriteReason}
+              onChange={(e) => setRewriteReason(e.target.value)}
+              placeholder="Explain why these employees' attendance needs to be corrected..."
+              rows={3}
+              style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 13, resize: 'vertical' }}
+            />
+          </div>
+        </div>
       </Modal>
     </div>
   );
