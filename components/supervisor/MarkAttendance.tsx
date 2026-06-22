@@ -325,8 +325,27 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
         </div>
       )}
       {isPastDate && !legacyAllApproved && employees.length > 0 && !someApproved && (
-        <div style={warnBannerStyle}>
-          ⚠ Past date — all employees are locked. Use &quot;Request Edit&quot; to select specific employees for a rewrite request.
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ ...warnBannerStyle, flex: 1 }}>
+            ⚠ Past date — all employees are locked. Use &quot;Request Edit&quot; to select specific employees for a rewrite request.
+          </div>
+          <button
+            onClick={openRewriteModal}
+            style={{
+              padding: '10px 20px',
+              background: 'var(--accent)',
+              color: 'var(--accent-text)',
+              border: 'none',
+              borderRadius: 'var(--r)',
+              fontFamily: 'var(--display)',
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Request Edit
+          </button>
         </div>
       )}
       {isPastDate && !legacyAllApproved && employees.length > 0 && someApproved && (
