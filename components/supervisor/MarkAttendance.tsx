@@ -50,6 +50,14 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
   // 7-day read-only history strip: code -> { 'YYYY-MM-DD': status }. Never blocks marking UI.
   const [stripData, setStripData] = useState<Record<string, Record<string, string>>>({});
   const [stripLoading, setStripLoading] = useState(false);
+  // Per-cell rewrite-request state: code -> { 'YYYY-MM-DD': request_status }.
+  const [cellReqData, setCellReqData] = useState<Record<string, Record<string, string>>>({});
+  // "Request edit" modal for a single strip cell (employee + that cell's own date).
+  const [cellModal, setCellModal] = useState<{ code: string; name: string; date: string; currentStatus: string } | null>(null);
+  const [cellReason, setCellReason] = useState('');
+  const [cellSubmitting, setCellSubmitting] = useState(false);
+  // Cell currently being written inline (approved cell → new status via submit path).
+  const [savingCell, setSavingCell] = useState<{ code: string; date: string } | null>(null);
   const { showToast } = useToast();
 
   // The 7 day-columns ending the day BEFORE the selected date, oldest → newest.
@@ -89,6 +97,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     setSelectedDesignations(new Set());
     setSortByDesignation(false);
     setStripData({});
+    setCellReqData({});
 
     try {
       const [empRes, checkRes] = await Promise.all([
@@ -122,16 +131,94 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     if (codes.length === 0) return;
     setStripLoading(true);
     try {
-      const res = await fetch(
-        `/api/attendance/history-strip?attendance_date=${date}&employee_codes=${encodeURIComponent(codes.join(','))}`,
-      );
-      if (!res.ok) return; // strip is best-effort; silently skip on failure
-      const json = await res.json();
-      setStripData(json.strip ?? {});
+      const qs = `attendance_date=${date}&employee_codes=${encodeURIComponent(codes.join(','))}`;
+      // Strip statuses + per-cell rewrite-request state, both best-effort (never block marking).
+      const [stripRes, cellRes] = await Promise.all([
+        fetch(`/api/attendance/history-strip?${qs}`),
+        fetch(`/api/rewrite/cell-status?${qs}`),
+      ]);
+      if (stripRes.ok) setStripData((await stripRes.json()).strip ?? {});
+      if (cellRes.ok) setCellReqData((await cellRes.json()).cellStatus ?? {});
     } catch {
       // Non-fatal: leave strip empty (cells render faint dashes)
     } finally {
       setStripLoading(false);
+    }
+  }
+
+  // Open the "request edit" modal for one strip cell (its own exact date).
+  function openCellRequest(code: string, cellDate: string, currentStatus: string) {
+    const emp = employees.find((e) => e.employee_code === code);
+    if (!emp) return;
+    setCellReason('');
+    setCellModal({ code, name: emp.employee_name, date: cellDate, currentStatus });
+  }
+
+  // Create ONE rewrite request for this employee + this exact cell date (reuses existing endpoint).
+  async function submitCellRequest() {
+    if (!cellModal || !cellReason.trim()) return;
+    const emp = employees.find((e) => e.employee_code === cellModal.code);
+    if (!emp) return;
+    setCellSubmitting(true);
+    try {
+      const res = await fetch('/api/rewrite/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attendance_date: cellModal.date, // the cell's OWN date — never the selected date
+          facility: emp.facility,
+          department: emp.department,
+          supervisor_name: supervisorName,
+          reason: cellReason,
+          employee_codes: [cellModal.code],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      showToast(data.created === 0 ? 'A pending request already exists for this day' : 'Edit request submitted',
+        data.created === 0 ? 'info' : 'success');
+      setCellModal(null);
+      loadHistoryStrip(employees.map((e) => e.employee_code));
+    } catch (err: unknown) {
+      showToast((err as Error).message || 'Failed to submit request', 'error');
+    } finally {
+      setCellSubmitting(false);
+    }
+  }
+
+  // Apply a new status to an APPROVED cell — routes through the existing submit/unlock path,
+  // scoped to this single employee + date. The ROW_NUMBER dedup keeps other employees untouched.
+  async function writeCell(code: string, cellDate: string, newStatus: string) {
+    const emp = employees.find((e) => e.employee_code === code);
+    if (!emp) return;
+    setSavingCell({ code, date: cellDate });
+    try {
+      const res = await fetch('/api/attendance/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attendance_date: cellDate,
+          facility: emp.facility,
+          department: emp.department,
+          marked_by: supervisorName,
+          shift,
+          employees: [{
+            employee_id: emp.id,
+            employee_code: emp.employee_code,
+            employee_name: emp.employee_name,
+            attendance_status: newStatus,
+            remarks: '',
+          }],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
+      showToast(`${emp.employee_name} · ${cellDate.split('-').reverse().join('-')} → ${newStatus}`, 'success');
+      await loadHistoryStrip(employees.map((e) => e.employee_code));
+    } catch (err: unknown) {
+      showToast((err as Error).message || 'Failed to save', 'error');
+    } finally {
+      setSavingCell(null);
     }
   }
 
@@ -516,6 +603,11 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
                 stripDays={dayColumns}
                 stripStatuses={stripData[emp.employee_code]}
                 stripLoading={stripLoading}
+                stripRequestStatuses={cellReqData[emp.employee_code]}
+                stripInteractive
+                onStripRequest={openCellRequest}
+                onStripWrite={writeCell}
+                stripSavingDate={savingCell?.code === emp.employee_code ? savingCell.date : null}
               />
             ))}
             {filtered.length === 0 && (
@@ -696,6 +788,68 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
             />
           </div>
         </div>
+      </Modal>
+
+      {/* Per-cell edit request modal — raised from the 7-day history strip (single employee + date) */}
+      <Modal
+        open={!!cellModal}
+        onClose={() => setCellModal(null)}
+        title="Request edit for this day"
+        actions={
+          <>
+            <button
+              onClick={() => setCellModal(null)}
+              style={{ padding: '8px 16px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitCellRequest}
+              disabled={!cellReason.trim() || cellSubmitting}
+              style={{
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: 8,
+                background: !cellReason.trim() || cellSubmitting ? 'var(--surface2)' : 'var(--accent)',
+                color: !cellReason.trim() || cellSubmitting ? 'var(--text-3)' : 'var(--accent-text)',
+                fontFamily: 'var(--display)',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: !cellReason.trim() || cellSubmitting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {cellSubmitting ? 'Submitting…' : 'Request edit'}
+            </button>
+          </>
+        }
+      >
+        {cellModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)', lineHeight: 1.8, background: 'var(--surface2)', borderRadius: 8, padding: '10px 12px' }}>
+              <div>
+                <strong style={{ color: 'var(--text)', fontFamily: 'var(--display)', fontSize: 14 }}>{cellModal.name}</strong>
+                <span style={{ color: 'var(--text-3)' }}> · {cellModal.code}</span>
+              </div>
+              <div>Date: <strong style={{ color: 'var(--text)' }}>{cellModal.date.split('-').reverse().join('-')}</strong></div>
+              <div>Current status: <strong style={{ color: 'var(--text)' }}>{cellModal.currentStatus || 'No record'}</strong></div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                Reason for edit request
+              </label>
+              <textarea
+                value={cellReason}
+                onChange={(e) => setCellReason(e.target.value)}
+                placeholder="Explain why this day's attendance needs to be corrected..."
+                rows={3}
+                style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 13, resize: 'vertical' }}
+              />
+            </div>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', lineHeight: 1.5 }}>
+              A manager must approve this before you can set the new status for {cellModal.date.split('-').reverse().join('-')}.
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

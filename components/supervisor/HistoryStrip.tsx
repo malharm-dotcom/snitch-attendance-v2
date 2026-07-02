@@ -1,6 +1,6 @@
 'use client';
 
-import { stripStatusInfo } from '@/lib/constants';
+import { stripStatusInfo, ATTENDANCE_STATUSES } from '@/lib/constants';
 
 /** Shared column geometry — header and every employee's cells MUST use these identical values
  *  so a status code always sits directly under its date column (spreadsheet alignment). */
@@ -120,13 +120,37 @@ interface HistoryStripProps {
   statuses: Record<string, string> | undefined;
   /** Subtle loading state while the strip data is still being fetched. */
   loading?: boolean;
+  /** Per-date latest rewrite request status for this employee (pending/approved/rejected/used). */
+  requestStatuses?: Record<string, string>;
+  /** When true, past cells are clickable to raise an edit request / edit approved cells. */
+  interactive?: boolean;
+  /** Open the "request edit" confirm for one past cell (its own exact date). */
+  onRequestCell?: (date: string, currentStatus: string) => void;
+  /** Write a new status for an APPROVED cell — routes through the existing submit path. */
+  onWriteCell?: (date: string, newStatus: string) => void;
+  /** Date (YYYY-MM-DD) currently being saved inline — that cell shows a saving state. */
+  savingDate?: string | null;
 }
 
-export default function HistoryStrip({ days, statuses, loading }: HistoryStripProps) {
+/** Human-readable suffix appended to a cell tooltip based on its rewrite-request state. */
+function reqTooltip(reqStatus: string | undefined): string {
+  switch (reqStatus) {
+    case 'pending':  return ' · Edit requested (pending)';
+    case 'approved': return ' · Edit approved — pick a new status';
+    case 'rejected': return ' · Edit request rejected';
+    case 'used':     return ' · Edited';
+    default:         return '';
+  }
+}
+
+export default function HistoryStrip({
+  days, statuses, loading, requestStatuses, interactive, onRequestCell, onWriteCell, savingDate,
+}: HistoryStripProps) {
   return (
     <div style={{ display: 'flex', gap: CELL_GAP, alignItems: 'center' }}>
       {days.map((day) => {
         const status = statuses?.[day.date];
+        const reqStatus = requestStatuses?.[day.date];
 
         if (loading) {
           return (
@@ -138,25 +162,66 @@ export default function HistoryStrip({ days, statuses, loading }: HistoryStripPr
           );
         }
 
-        if (!status) {
+        // APPROVED → inline editable dropdown for this specific date.
+        if (interactive && onWriteCell && reqStatus === 'approved') {
+          const saving = savingDate === day.date;
+          const selectValue = status && ATTENDANCE_STATUSES.includes(status) ? status : 'Present';
           return (
-            <span
+            <select
               key={day.date}
-              title={`No record · ${ddmmyyyy(day.date)}`}
+              value={selectValue}
+              disabled={saving}
+              title={`Set status · ${ddmmyyyy(day.date)}`}
+              onChange={(e) => onWriteCell(day.date, e.target.value)}
               style={{
                 width: CELL_W,
                 height: 18,
                 flexShrink: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 fontFamily: 'var(--mono)',
-                fontSize: 10,
+                fontSize: 9,
+                fontWeight: 600,
                 borderRadius: 4,
-                color: 'var(--text-3)',
-                background: 'var(--surface2)',
-                border: '1px solid var(--border)',
+                border: '1.5px solid var(--success)',
+                background: saving ? 'var(--surface2)' : 'var(--success-bg)',
+                color: 'var(--success)',
+                padding: '0 2px',
+                cursor: saving ? 'wait' : 'pointer',
+                opacity: saving ? 0.6 : 1,
               }}
+            >
+              {ATTENDANCE_STATUSES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          );
+        }
+
+        // Clickable to raise an edit request when interactive and not already pending/approved.
+        const canRequest = !!(interactive && onRequestCell && reqStatus !== 'pending');
+        const pendingRing = reqStatus === 'pending';
+        const tooltip = `${status ? status : 'No record'} · ${ddmmyyyy(day.date)}${reqTooltip(reqStatus)}`;
+
+        const base: React.CSSProperties = {
+          width: CELL_W,
+          height: 18,
+          flexShrink: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'var(--mono)',
+          fontSize: 10,
+          borderRadius: 4,
+          cursor: canRequest ? 'pointer' : (pendingRing ? 'default' : 'help'),
+          boxShadow: pendingRing ? 'inset 0 0 0 1.5px var(--warn)' : undefined,
+        };
+
+        if (!status) {
+          return (
+            <span
+              key={day.date}
+              title={tooltip}
+              onClick={canRequest ? () => onRequestCell!(day.date, '') : undefined}
+              style={{ ...base, color: 'var(--text-3)', background: 'var(--surface2)', border: pendingRing ? undefined : '1px solid var(--border)' }}
             >
               –
             </span>
@@ -167,22 +232,9 @@ export default function HistoryStrip({ days, statuses, loading }: HistoryStripPr
         return (
           <span
             key={day.date}
-            title={`${status} · ${ddmmyyyy(day.date)}`}
-            style={{
-              width: CELL_W,
-              height: 18,
-              flexShrink: 0,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'var(--mono)',
-              fontSize: 10,
-              fontWeight: 600,
-              borderRadius: 4,
-              color,
-              background: bg,
-              cursor: 'help',
-            }}
+            title={tooltip}
+            onClick={canRequest ? () => onRequestCell!(day.date, status) : undefined}
+            style={{ ...base, fontWeight: 600, color, background: bg }}
           >
             {code}
           </span>

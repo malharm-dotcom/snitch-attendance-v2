@@ -27,6 +27,16 @@ interface EmployeeRowProps {
   stripStatuses?: Record<string, string>;
   /** True while strip data is still loading (shows subtle skeletons). */
   stripLoading?: boolean;
+  /** Per-date latest rewrite-request status for this employee's strip cells. */
+  stripRequestStatuses?: Record<string, string>;
+  /** Enables clicking past cells to raise/apply per-day rewrite requests. */
+  stripInteractive?: boolean;
+  /** Raise an edit request for one past cell (employee_code + that cell's exact date). */
+  onStripRequest?: (code: string, date: string, currentStatus: string) => void;
+  /** Apply a new status to an approved cell (employee_code + date + new status). */
+  onStripWrite?: (code: string, date: string, newStatus: string) => void;
+  /** Date currently being saved inline for this employee (shows saving state). */
+  stripSavingDate?: string | null;
 }
 
 function highlightText(text: string, query: string): React.ReactNode {
@@ -46,7 +56,10 @@ function highlightText(text: string, query: string): React.ReactNode {
 
 const REMARKS_NEEDED = ['LOP', 'Sick Leave', 'Paid Leave', 'Unpaid Leave', 'Half Day', 'Maternity Leave', 'Paternity Leave', 'Bereavement Leave', 'Compensatory Off'];
 
-export default function EmployeeRow({ employee, searchQuery, onChange, disabled, stripDays, stripStatuses, stripLoading }: EmployeeRowProps) {
+export default function EmployeeRow({
+  employee, searchQuery, onChange, disabled, stripDays, stripStatuses, stripLoading,
+  stripRequestStatuses, stripInteractive, onStripRequest, onStripWrite, stripSavingDate,
+}: EmployeeRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [justChanged, setJustChanged] = useState(false);
 
@@ -117,7 +130,16 @@ export default function EmployeeRow({ employee, searchQuery, onChange, disabled,
       </div>
 
       {stripDays && stripDays.length > 0 && (
-        <HistoryStrip days={stripDays} statuses={stripStatuses} loading={stripLoading} />
+        <HistoryStrip
+          days={stripDays}
+          statuses={stripStatuses}
+          loading={stripLoading}
+          requestStatuses={stripRequestStatuses}
+          interactive={stripInteractive}
+          savingDate={stripSavingDate}
+          onRequestCell={onStripRequest ? (date, currentStatus) => onStripRequest(employee.employee_code, date, currentStatus) : undefined}
+          onWriteCell={onStripWrite ? (date, newStatus) => onStripWrite(employee.employee_code, date, newStatus) : undefined}
+        />
       )}
 
       <div style={{

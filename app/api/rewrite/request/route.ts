@@ -26,8 +26,32 @@ export async function POST(request: NextRequest) {
     const parsedDate = parseISTDate(attendance_date);
     const requestedAt = istNow();
 
+    // Duplicate/pending guard: never create a second pending request for the same
+    // (employee, date, facility, department). Skip codes that already have one pending.
+    const existingPending = await prisma.attendanceRewriteRequest.findMany({
+      where: {
+        attendanceDate: parsedDate,
+        facility,
+        department,
+        employeeCode: { in: employee_codes },
+        requestStatus: 'pending',
+      },
+      select: { employeeCode: true },
+    });
+    const alreadyPending = new Set(existingPending.map((r) => r.employeeCode));
+    const codesToCreate = employee_codes.filter((code) => !alreadyPending.has(code));
+
+    if (codesToCreate.length === 0) {
+      return NextResponse.json({
+        success: true,
+        created: 0,
+        skipped: employee_codes.length,
+        message: 'A pending request already exists for the selected employee(s) and date.',
+      });
+    }
+
     await prisma.attendanceRewriteRequest.createMany({
-      data: employee_codes.map((code) => ({
+      data: codesToCreate.map((code) => ({
         attendanceDate: parsedDate,
         facility,
         department,
@@ -39,7 +63,11 @@ export async function POST(request: NextRequest) {
       })),
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      created: codesToCreate.length,
+      skipped: employee_codes.length - codesToCreate.length,
+    });
   } catch (error) {
     console.error('POST /api/rewrite/request error:', error);
     return NextResponse.json({ error: 'Failed to create rewrite request' }, { status: 500 });
