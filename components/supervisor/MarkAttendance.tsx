@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import EmployeeRow, { type EmployeeEntry } from './EmployeeRow';
+import { buildDayColumns, HistoryStripHeader } from './HistoryStrip';
 import ProgressBar from './ProgressBar';
 import SummaryBar from './SummaryBar';
 import SubmissionBanner from './SubmissionBanner';
@@ -51,19 +52,9 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
   const [stripLoading, setStripLoading] = useState(false);
   const { showToast } = useToast();
 
-  // The 7 calendar days ending the day BEFORE the selected date, oldest → newest.
-  const stripDays = useMemo(() => {
-    const [y, m, d] = date.split('-').map(Number);
-    const sel = Date.UTC(y, m - 1, d);
-    const out: string[] = [];
-    for (let i = 7; i >= 1; i--) {
-      const dt = new Date(sel - i * 86400000);
-      out.push(
-        `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`,
-      );
-    }
-    return out;
-  }, [date]);
+  // The 7 day-columns ending the day BEFORE the selected date, oldest → newest.
+  // Single source of column order shared by the sticky header and every employee row.
+  const dayColumns = useMemo(() => buildDayColumns(date), [date]);
 
   const designationFilterActive = selectedDesignations.size > 0;
   const activeDesignationNames = Array.from(selectedDesignations).join(', ');
@@ -511,6 +502,9 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
           <ProgressBar present={presentCount} total={employees.length} />
           <SummaryBar counts={counts} />
 
+          {/* Sticky date header — aligns above every card's 7-day cells (spreadsheet-style) */}
+          <HistoryStripHeader days={dayColumns} />
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filtered.map((emp) => (
               <EmployeeRow
@@ -519,7 +513,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
                 searchQuery={searchQuery}
                 onChange={updateEmployee}
                 disabled={isEmployeeBlocked(emp.employee_code)}
-                stripDays={stripDays}
+                stripDays={dayColumns}
                 stripStatuses={stripData[emp.employee_code]}
                 stripLoading={stripLoading}
               />

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { ATTENDANCE_STATUSES, STATUS_CLASSES } from '@/lib/constants';
-import HistoryStrip from './HistoryStrip';
+import HistoryStrip, { type DayColumn } from './HistoryStrip';
 
 export interface EmployeeEntry {
   id: number;
@@ -21,8 +21,8 @@ interface EmployeeRowProps {
   searchQuery: string;
   onChange: (code: string, field: 'attendance_status' | 'remarks', value: string) => void;
   disabled?: boolean;
-  /** 7 calendar days (oldest → newest) for the read-only history strip. */
-  stripDays?: string[];
+  /** Shared 7 day-columns (oldest → newest) — same instance the sticky header uses. */
+  stripDays?: DayColumn[];
   /** Map of YYYY-MM-DD → status for this employee's previous-7-days strip. */
   stripStatuses?: Record<string, string>;
   /** True while strip data is still loading (shows subtle skeletons). */
