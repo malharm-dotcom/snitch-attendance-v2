@@ -46,7 +46,24 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
   const [rewriteReason, setRewriteReason] = useState('');
   const [selectedForRewrite, setSelectedForRewrite] = useState<Set<string>>(new Set());
   const [confirmFilterOpen, setConfirmFilterOpen] = useState(false);
+  // 7-day read-only history strip: code -> { 'YYYY-MM-DD': status }. Never blocks marking UI.
+  const [stripData, setStripData] = useState<Record<string, Record<string, string>>>({});
+  const [stripLoading, setStripLoading] = useState(false);
   const { showToast } = useToast();
+
+  // The 7 calendar days ending the day BEFORE the selected date, oldest → newest.
+  const stripDays = useMemo(() => {
+    const [y, m, d] = date.split('-').map(Number);
+    const sel = Date.UTC(y, m - 1, d);
+    const out: string[] = [];
+    for (let i = 7; i >= 1; i--) {
+      const dt = new Date(sel - i * 86400000);
+      out.push(
+        `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`,
+      );
+    }
+    return out;
+  }, [date]);
 
   const designationFilterActive = selectedDesignations.size > 0;
   const activeDesignationNames = Array.from(selectedDesignations).join(', ');
@@ -80,6 +97,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     setCheckStatus(null);
     setSelectedDesignations(new Set());
     setSortByDesignation(false);
+    setStripData({});
 
     try {
       const [empRes, checkRes] = await Promise.all([
@@ -99,10 +117,30 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
       setEmployees(loaded);
       setCheckStatus(checkData);
       if (checkData.submitted) setSubmitted(true);
+
+      // Fetch the 7-day history strip in the background — never block the marking UI on it.
+      loadHistoryStrip(loaded.map((e) => e.employee_code));
     } catch {
       showToast('Failed to load employees', 'error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadHistoryStrip(codes: string[]) {
+    if (codes.length === 0) return;
+    setStripLoading(true);
+    try {
+      const res = await fetch(
+        `/api/attendance/history-strip?attendance_date=${date}&employee_codes=${encodeURIComponent(codes.join(','))}`,
+      );
+      if (!res.ok) return; // strip is best-effort; silently skip on failure
+      const json = await res.json();
+      setStripData(json.strip ?? {});
+    } catch {
+      // Non-fatal: leave strip empty (cells render faint dashes)
+    } finally {
+      setStripLoading(false);
     }
   }
 
@@ -481,6 +519,9 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
                 searchQuery={searchQuery}
                 onChange={updateEmployee}
                 disabled={isEmployeeBlocked(emp.employee_code)}
+                stripDays={stripDays}
+                stripStatuses={stripData[emp.employee_code]}
+                stripLoading={stripLoading}
               />
             ))}
             {filtered.length === 0 && (

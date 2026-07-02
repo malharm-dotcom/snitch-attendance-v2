@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { ATTENDANCE_STATUSES, STATUS_CLASSES } from '@/lib/constants';
+import HistoryStrip from './HistoryStrip';
 
 export interface EmployeeEntry {
   id: number;
@@ -20,6 +21,12 @@ interface EmployeeRowProps {
   searchQuery: string;
   onChange: (code: string, field: 'attendance_status' | 'remarks', value: string) => void;
   disabled?: boolean;
+  /** 7 calendar days (oldest → newest) for the read-only history strip. */
+  stripDays?: string[];
+  /** Map of YYYY-MM-DD → status for this employee's previous-7-days strip. */
+  stripStatuses?: Record<string, string>;
+  /** True while strip data is still loading (shows subtle skeletons). */
+  stripLoading?: boolean;
 }
 
 function highlightText(text: string, query: string): React.ReactNode {
@@ -39,7 +46,7 @@ function highlightText(text: string, query: string): React.ReactNode {
 
 const REMARKS_NEEDED = ['LOP', 'Sick Leave', 'Paid Leave', 'Unpaid Leave', 'Half Day', 'Maternity Leave', 'Paternity Leave', 'Bereavement Leave', 'Compensatory Off'];
 
-export default function EmployeeRow({ employee, searchQuery, onChange, disabled }: EmployeeRowProps) {
+export default function EmployeeRow({ employee, searchQuery, onChange, disabled, stripDays, stripStatuses, stripLoading }: EmployeeRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [justChanged, setJustChanged] = useState(false);
 
@@ -108,6 +115,10 @@ export default function EmployeeRow({ employee, searchQuery, onChange, disabled 
           ))}
         </select>
       </div>
+
+      {stripDays && stripDays.length > 0 && (
+        <HistoryStrip days={stripDays} statuses={stripStatuses} loading={stripLoading} />
+      )}
 
       <div style={{
         overflow: 'hidden',

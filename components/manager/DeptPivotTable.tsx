@@ -16,6 +16,7 @@ const STATUS_SHORT: Record<string, string> = {
   'Paternity Leave':   'PaL',
   'Bereavement Leave': 'BL',
   'Compensatory Off':  'CO',
+  'Absconding':        'AB',
 };
 
 const STATUS_CELL_BG: Record<string, string> = {
@@ -32,6 +33,7 @@ const STATUS_CELL_BG: Record<string, string> = {
   'Paternity Leave':   'rgba(243,232,255,0.55)',
   'Bereavement Leave': 'rgba(243,232,255,0.55)',
   'Compensatory Off':  'rgba(254,249,195,0.35)',
+  'Absconding':        'rgba(254,202,202,0.55)',
 };
 
 export interface PivotRow {
