@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import EmployeeRow, { type EmployeeEntry } from './EmployeeRow';
 import { buildDayColumns, HistoryStripHeader } from './HistoryStrip';
 import ProgressBar from './ProgressBar';
@@ -63,6 +64,14 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
   // The 7 day-columns ending the day BEFORE the selected date, oldest → newest.
   // Single source of column order shared by the sticky header and every employee row.
   const dayColumns = useMemo(() => buildDayColumns(date), [date]);
+
+  // Esc closes the per-cell "Request edit" modal (preserves prior shared-Modal behavior).
+  useEffect(() => {
+    if (!cellModal) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setCellModal(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [cellModal]);
 
   const designationFilterActive = selectedDesignations.size > 0;
   const activeDesignationNames = Array.from(selectedDesignations).join(', ');
@@ -791,66 +800,100 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
       </Modal>
 
       {/* Per-cell edit request modal — raised from the 7-day history strip (single employee + date) */}
-      <Modal
-        open={!!cellModal}
-        onClose={() => setCellModal(null)}
-        title="Request edit for this day"
-        actions={
-          <>
-            <button
-              onClick={() => setCellModal(null)}
-              style={{ padding: '8px 16px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={submitCellRequest}
-              disabled={!cellReason.trim() || cellSubmitting}
-              style={{
-                padding: '8px 16px',
-                border: 'none',
-                borderRadius: 8,
-                background: !cellReason.trim() || cellSubmitting ? 'var(--surface2)' : 'var(--accent)',
-                color: !cellReason.trim() || cellSubmitting ? 'var(--text-3)' : 'var(--accent-text)',
-                fontFamily: 'var(--display)',
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: !cellReason.trim() || cellSubmitting ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {cellSubmitting ? 'Submitting…' : 'Request edit'}
-            </button>
-          </>
-        }
-      >
-        {cellModal && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)', lineHeight: 1.8, background: 'var(--surface2)', borderRadius: 8, padding: '10px 12px' }}>
-              <div>
-                <strong style={{ color: 'var(--text)', fontFamily: 'var(--display)', fontSize: 14 }}>{cellModal.name}</strong>
-                <span style={{ color: 'var(--text-3)' }}> · {cellModal.code}</span>
+      {/* Portaled to document.body so it centers in the viewport regardless of any
+          ancestor CSS containing block (transform/animation) — no scrolling to reach it. */}
+      {cellModal && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setCellModal(null); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9000,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: 'var(--r)',
+            width: '100%',
+            maxWidth: 440,
+            maxHeight: '90vh',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.22)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 16, fontWeight: 700 }}>
+                Request edit for this day
+              </h3>
+              <button
+                onClick={() => setCellModal(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-2)', lineHeight: 1, padding: '2px 6px' }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body (internally scrollable) */}
+            <div style={{ padding: '20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)', lineHeight: 1.8, background: 'var(--surface2)', borderRadius: 8, padding: '10px 12px' }}>
+                  <div>
+                    <strong style={{ color: 'var(--text)', fontFamily: 'var(--display)', fontSize: 14 }}>{cellModal.name}</strong>
+                    <span style={{ color: 'var(--text-3)' }}> · {cellModal.code}</span>
+                  </div>
+                  <div>Date: <strong style={{ color: 'var(--text)' }}>{cellModal.date.split('-').reverse().join('-')}</strong></div>
+                  <div>Current status: <strong style={{ color: 'var(--text)' }}>{cellModal.currentStatus || 'No record'}</strong></div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                    Reason for edit request
+                  </label>
+                  <textarea
+                    value={cellReason}
+                    onChange={(e) => setCellReason(e.target.value)}
+                    placeholder="Explain why this day's attendance needs to be corrected..."
+                    rows={3}
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 13, resize: 'vertical' }}
+                  />
+                </div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', lineHeight: 1.5 }}>
+                  A manager must approve this before you can set the new status for {cellModal.date.split('-').reverse().join('-')}.
+                </div>
               </div>
-              <div>Date: <strong style={{ color: 'var(--text)' }}>{cellModal.date.split('-').reverse().join('-')}</strong></div>
-              <div>Current status: <strong style={{ color: 'var(--text)' }}>{cellModal.currentStatus || 'No record'}</strong></div>
             </div>
-            <div>
-              <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
-                Reason for edit request
-              </label>
-              <textarea
-                value={cellReason}
-                onChange={(e) => setCellReason(e.target.value)}
-                placeholder="Explain why this day's attendance needs to be corrected..."
-                rows={3}
-                style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 13, resize: 'vertical' }}
-              />
-            </div>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', lineHeight: 1.5 }}>
-              A manager must approve this before you can set the new status for {cellModal.date.split('-').reverse().join('-')}.
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+              <button
+                onClick={() => setCellModal(null)}
+                style={{ padding: '8px 16px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitCellRequest}
+                disabled={!cellReason.trim() || cellSubmitting}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: 8,
+                  background: !cellReason.trim() || cellSubmitting ? 'var(--surface2)' : 'var(--accent)',
+                  color: !cellReason.trim() || cellSubmitting ? 'var(--text-3)' : 'var(--accent-text)',
+                  fontFamily: 'var(--display)',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: !cellReason.trim() || cellSubmitting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {cellSubmitting ? 'Submitting…' : 'Request edit'}
+              </button>
             </div>
           </div>
-        )}
-      </Modal>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
