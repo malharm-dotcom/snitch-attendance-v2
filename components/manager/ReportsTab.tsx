@@ -45,6 +45,7 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
   const [manpowerData, setManpowerData] = useState<ManpowerData | null>(null);
   const [rateData, setRateData] = useState<RateData | null>(null);
   const [rateRange, setRateRange] = useState<{ from: string; to: string }>({ from: fromDate, to: toDate });
+  const [rateLevel, setRateLevel] = useState<'facility' | 'department'>('facility');
   const { showToast } = useToast();
 
   async function runReport() {
@@ -70,7 +71,9 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
       } else if (reportType === 'manpower') {
         url = `/api/reports/manpower-summary`;
       } else if (reportType === 'rate') {
-        url = `/api/reports/attendance-rate?from=${fromDate}&to=${toDate}`;
+        const params = new URLSearchParams({ from: fromDate, to: toDate, level: rateLevel });
+        if (shift) params.append('shift', shift);
+        url = `/api/reports/attendance-rate?${params}`;
       }
 
       const res = await fetch(url);
@@ -180,6 +183,25 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
                     <option value="">All shifts</option>
                     <option value="Day">Day</option>
                     <option value="Night">Night</option>
+                  </select>
+                </div>
+              </>
+            )}
+            {reportType === 'rate' && (
+              <>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Shift</label>
+                  <select value={shift} onChange={(e) => setShift(e.target.value)} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13, background: 'var(--surface)' }}>
+                    <option value="">All shifts</option>
+                    <option value="Day">Day</option>
+                    <option value="Night">Night</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Breakdown</label>
+                  <select value={rateLevel} onChange={(e) => setRateLevel(e.target.value as 'facility' | 'department')} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13, background: 'var(--surface)' }}>
+                    <option value="facility">By facility</option>
+                    <option value="department">By department</option>
                   </select>
                 </div>
               </>

@@ -2,8 +2,22 @@
  * Shared read-time normalization + status buckets for the Reports section.
  * These NEVER mutate stored data — they normalize at read time only.
  */
+import { DEPARTMENTS } from './constants';
 
 export const NOT_SPECIFIED = 'Not specified';
+
+/**
+ * Collapse employee-side department spelling variants (e.g. "B2C RETURN") onto the
+ * canonical DEPARTMENTS label so the eligible denominator lines up with the
+ * header-side marked counts. Unknown departments (e.g. "MANAGER") pass through
+ * trimmed so they stay visible rather than being silently merged.
+ */
+export function normalizeDepartment(dept: string | null | undefined): string {
+  const t = (dept ?? '').trim();
+  if (!t) return NOT_SPECIFIED;
+  const hit = DEPARTMENTS.find((d) => d.toLowerCase() === t.toLowerCase());
+  return hit ?? t;
+}
 
 /**
  * Attendance Rate buckets — single source of truth (signed off 2026-07-09).

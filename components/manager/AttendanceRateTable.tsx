@@ -3,6 +3,7 @@
 export interface RateRow {
   date: string;
   facility: string;
+  department?: string;
   eligible: number;
   marked: number;
   presentLike: number;
@@ -14,6 +15,8 @@ export interface RateRow {
 
 export interface RateData {
   scope: string;
+  level: 'facility' | 'department';
+  shift: string;
   rows: RateRow[];
   warnings: string[];
 }
@@ -70,11 +73,14 @@ function PctCell({ value, barColor }: { value: number | null; barColor: string }
 }
 
 export default function AttendanceRateTable({ data, fromDate, toDate }: Props) {
+  const byDept = data.level === 'department';
+
   function downloadCSV() {
-    const headers = ['Date', 'Facility', 'Eligible', 'Marked', 'Attendance %', 'Absenteeism %', 'Pending %'];
+    const headers = ['Date', 'Facility', ...(byDept ? ['Department'] : []), 'Eligible', 'Marked', 'Attendance %', 'Absenteeism %', 'Pending %'];
     const dataRows = data.rows.map((r) => [
       r.date,
       r.facility,
+      ...(byDept ? [r.department ?? ''] : []),
       String(r.eligible),
       String(r.marked),
       r.attendancePct === null ? '' : r.attendancePct.toFixed(2),
@@ -88,7 +94,7 @@ export default function AttendanceRateTable({ data, fromDate, toDate }: Props) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `attendance-rate-${fromDate}_${toDate}.csv`;
+    a.download = `attendance-rate-${byDept ? 'by-dept-' : ''}${data.shift.toLowerCase()}-${fromDate}_${toDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -96,9 +102,10 @@ export default function AttendanceRateTable({ data, fromDate, toDate }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)' }}>
-          <span className="badge" style={{ background: 'var(--accent-glow)', color: 'var(--accent)', marginRight: 8 }}>{data.scope}</span>
-          {data.rows.length} day-facility rows
+        <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)', display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+          <span className="badge" style={{ background: 'var(--accent-glow)', color: 'var(--accent)' }}>{data.scope}</span>
+          <span className="badge" style={{ background: 'var(--surface2)', color: 'var(--text-2)' }}>{data.shift} shift</span>
+          <span style={{ marginLeft: 4 }}>{data.rows.length} {byDept ? 'date-facility-dept' : 'day-facility'} rows</span>
         </span>
         <button
           onClick={downloadCSV}
@@ -129,6 +136,7 @@ export default function AttendanceRateTable({ data, fromDate, toDate }: Props) {
               <tr>
                 <th style={{ ...th, left: 0, zIndex: 4, textAlign: 'left', minWidth: 120, borderRight: '1px solid var(--border)' }}>Date</th>
                 <th style={{ ...th, textAlign: 'left', minWidth: 80 }}>Facility</th>
+                {byDept && <th style={{ ...th, textAlign: 'left', minWidth: 130 }}>Department</th>}
                 <th style={th}>Eligible</th>
                 <th style={th}>Marked</th>
                 <th style={th}>Attendance %</th>
@@ -138,7 +146,7 @@ export default function AttendanceRateTable({ data, fromDate, toDate }: Props) {
             </thead>
             <tbody>
               {data.rows.map((r) => (
-                <tr key={`${r.date}|${r.facility}`} className="hover-row" style={{ background: 'var(--surface)' }}>
+                <tr key={`${r.date}|${r.facility}|${r.department ?? ''}`} className="hover-row" style={{ background: 'var(--surface)' }}>
                   <td style={{
                     ...td,
                     textAlign: 'left',
@@ -152,6 +160,7 @@ export default function AttendanceRateTable({ data, fromDate, toDate }: Props) {
                     {r.date}
                   </td>
                   <td style={{ ...td, textAlign: 'left', color: 'var(--text-2)' }}>{r.facility}</td>
+                  {byDept && <td style={{ ...td, textAlign: 'left', fontFamily: 'var(--display)', color: 'var(--text)' }}>{r.department}</td>}
                   <td style={td}>{r.eligible === 0 ? <span style={{ color: 'var(--text-3)' }}>&ndash;</span> : r.eligible}</td>
                   <td style={td}>{r.marked === 0 ? <span style={{ color: 'var(--text-3)' }}>&ndash;</span> : r.marked}</td>
                   <PctCell value={r.attendancePct} barColor="var(--success)" />
