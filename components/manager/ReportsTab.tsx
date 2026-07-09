@@ -5,12 +5,14 @@ import { DEPARTMENTS } from '@/lib/constants';
 import { istDateString } from '@/lib/ist';
 import { useToast } from '../shared/Toast';
 import DeptPivotTable from './DeptPivotTable';
+import ManpowerSummaryTable, { type ManpowerData } from './ManpowerSummaryTable';
+import AttendanceRateTable, { type RateData } from './AttendanceRateTable';
 
 interface ReportsTabProps {
   facility: string;
 }
 
-type ReportType = 'daily' | 'range' | 'pivot';
+type ReportType = 'daily' | 'range' | 'pivot' | 'manpower' | 'rate';
 
 interface PivotResult {
   rows: { department: string; statusCounts: Record<string, number>; total: number }[];
@@ -40,12 +42,17 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
   const [data, setData] = useState<Record<string, unknown>[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [pivotData, setPivotData] = useState<PivotResult | null>(null);
+  const [manpowerData, setManpowerData] = useState<ManpowerData | null>(null);
+  const [rateData, setRateData] = useState<RateData | null>(null);
+  const [rateRange, setRateRange] = useState<{ from: string; to: string }>({ from: fromDate, to: toDate });
   const { showToast } = useToast();
 
   async function runReport() {
     setLoading(true);
     setData(null);
     setPivotData(null);
+    setManpowerData(null);
+    setRateData(null);
     try {
       let url = '';
 
@@ -60,6 +67,10 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
         url = `/api/reports/range?${params}`;
       } else if (reportType === 'pivot') {
         url = `/api/reports/department-pivot?from=${fromDate}&to=${toDate}`;
+      } else if (reportType === 'manpower') {
+        url = `/api/reports/manpower-summary`;
+      } else if (reportType === 'rate') {
+        url = `/api/reports/attendance-rate?from=${fromDate}&to=${toDate}`;
       }
 
       const res = await fetch(url);
@@ -72,6 +83,13 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
       if (reportType === 'pivot') {
         setPivotData(json);
         if (!json.rows?.length) showToast('No data found for this filter', 'info');
+      } else if (reportType === 'manpower') {
+        setManpowerData(json);
+        if (!json.totalActive) showToast('No active employees in scope', 'info');
+      } else if (reportType === 'rate') {
+        setRateData(json);
+        setRateRange({ from: fromDate, to: toDate });
+        if (!json.rows?.length) showToast('No data found for this date range', 'info');
       } else {
         const rows = json.rows ?? json.employees ?? [];
         setData(rows);
@@ -94,6 +112,8 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
           { id: 'range', label: 'Raw Table' },
           { id: 'daily', label: 'Daily Summary' },
           { id: 'pivot', label: 'Dept Pivot' },
+          { id: 'manpower', label: 'Manpower Summary' },
+          { id: 'rate', label: 'Attendance Rate' },
         ] as { id: ReportType; label: string }[]).map((r) => (
           <button
             key={r.id}
@@ -135,7 +155,7 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
           </>
         )}
 
-        {(reportType === 'range' || reportType === 'pivot') && (
+        {(reportType === 'range' || reportType === 'pivot' || reportType === 'rate') && (
           <>
             <div>
               <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>From</label>
@@ -228,6 +248,14 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
           grandTotals={pivotData.grandTotals}
           grandTotal={pivotData.grandTotal}
         />
+      )}
+
+      {!loading && reportType === 'manpower' && manpowerData && (
+        <ManpowerSummaryTable data={manpowerData} />
+      )}
+
+      {!loading && reportType === 'rate' && rateData && (
+        <AttendanceRateTable data={rateData} fromDate={rateRange.from} toDate={rateRange.to} />
       )}
 
       {!loading && (data?.length === 0 || pivotData?.rows.length === 0) && (
