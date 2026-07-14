@@ -1,7 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { istDateString } from '@/lib/ist';
+import ExportControls from './ExportControls';
+import EmptyState from './EmptyState';
+import { scopeLabel, scopeSlug, reportFilename } from '@/lib/reportExport';
 
 export interface ManpowerPivotRow {
   label: string;
@@ -68,9 +71,10 @@ function Num({ value, bold }: { value: number; bold?: boolean }) {
   return <span style={{ fontWeight: bold ? 700 : 400, color: 'var(--text)' }}>{value.toLocaleString('en-IN', { useGrouping: false })}</span>;
 }
 
-export default function ManpowerSummaryTable({ data }: { data: ManpowerData }) {
+export default function ManpowerSummaryTable({ data, facility }: { data: ManpowerData; facility: string }) {
   const [level, setLevel] = useState<ManpowerLevel>('roll-gender');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const captureRef = useRef<HTMLDivElement>(null);
 
   const pivot = data.pivots[level];
   const levelMeta = LEVELS.find((l) => l.id === level)!;
@@ -143,20 +147,22 @@ export default function ManpowerSummaryTable({ data }: { data: ManpowerData }) {
           <span className="badge" style={{ background: 'var(--accent-glow)', color: 'var(--accent)', marginRight: 8 }}>{data.scope}</span>
           {data.totalActive} active employees
         </span>
-        <button
-          onClick={downloadCSV}
-          style={{ padding: '7px 14px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer', background: 'var(--surface)' }}
-        >
-          &darr; Download CSV
-        </button>
+        <ExportControls
+          onDownloadCSV={downloadCSV}
+          captureRef={captureRef}
+          pngFilename={reportFilename(`manpower-summary-${level}`, scopeSlug(facility), istDateString(), 'png')}
+          meta={{
+            title: `Manpower Summary — ${levelMeta.label}`,
+            scope: scopeLabel(facility),
+            range: `As of ${istDateString()}`,
+          }}
+        />
       </div>
 
       {pivot.rows.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)', fontFamily: 'var(--mono)', fontSize: 13 }}>
-          No active employees in scope
-        </div>
+        <EmptyState />
       ) : (
-        <div style={{ overflowX: 'auto', maxHeight: 520, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
+        <div ref={captureRef} style={{ overflowX: 'auto', maxHeight: 520, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
           <table style={{ fontSize: 13, fontFamily: 'var(--mono)', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
               <tr>

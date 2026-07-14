@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DEPARTMENTS } from '@/lib/constants';
 import { istDateString } from '@/lib/ist';
+import { scopeLabel, scopeSlug, reportFilename } from '@/lib/reportExport';
 import { useToast } from '../shared/Toast';
 import DeptPivotTable from './DeptPivotTable';
 import ManpowerSummaryTable, { type ManpowerData } from './ManpowerSummaryTable';
 import AttendanceRateTable, { type RateData } from './AttendanceRateTable';
+import ExportControls from './ExportControls';
+import EmptyState from './EmptyState';
 
 interface ReportsTabProps {
   facility: string;
@@ -45,7 +48,10 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
   const [manpowerData, setManpowerData] = useState<ManpowerData | null>(null);
   const [rateData, setRateData] = useState<RateData | null>(null);
   const [rateRange, setRateRange] = useState<{ from: string; to: string }>({ from: fromDate, to: toDate });
+  const [pivotRange, setPivotRange] = useState<{ from: string; to: string }>({ from: fromDate, to: toDate });
   const [rateLevel, setRateLevel] = useState<'facility' | 'department'>('facility');
+  const [genericRange, setGenericRange] = useState<{ label: string; range: string; base: string }>({ label: 'Report', range: '', base: 'report' });
+  const genericTableRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
   async function runReport() {
@@ -85,6 +91,7 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
 
       if (reportType === 'pivot') {
         setPivotData(json);
+        setPivotRange({ from: fromDate, to: toDate });
         if (!json.rows?.length) showToast('No data found for this filter', 'info');
       } else if (reportType === 'manpower') {
         setManpowerData(json);
@@ -96,6 +103,11 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
       } else {
         const rows = json.rows ?? json.employees ?? [];
         setData(rows);
+        if (reportType === 'range') {
+          setGenericRange({ label: 'Raw Table', range: `${fromDate} → ${toDate}`, base: 'raw-table' });
+        } else {
+          setGenericRange({ label: 'Daily Summary', range: date, base: 'daily-summary' });
+        }
         if (rows.length === 0) showToast('No data found for this filter', 'info');
       }
     } catch (err: unknown) {
@@ -225,65 +237,73 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
         </div>
       )}
 
-      {!loading && data && data.length > 0 && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)' }}>{data.length} rows</span>
-            <button
-              onClick={() => downloadCSV(data, `report.csv`)}
-              style={{ padding: '7px 14px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer', background: 'var(--surface)' }}
-            >
-              ↓ Download CSV
-            </button>
-          </div>
-          <div style={{ overflowX: 'auto', maxHeight: 440 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'var(--mono)' }}>
-              <thead style={{ position: 'sticky', top: 0 }}>
-                <tr style={{ background: 'var(--surface2)', borderBottom: '2px solid var(--border)' }}>
-                  {Object.keys(data[0]).map((h) => (
-                    <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-2)', fontSize: 10, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.slice(0, 200).map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
-                    {Object.values(row).map((v, j) => (
-                      <td key={j} style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>{String(v ?? '—')}</td>
+      {!loading && (reportType === 'range' || reportType === 'daily') && data && (
+        data.length > 0 ? (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)' }}>{data.length} rows</span>
+              <ExportControls
+                onDownloadCSV={() => downloadCSV(data, `${genericRange.base}.csv`)}
+                captureRef={genericTableRef}
+                pngFilename={reportFilename(genericRange.base, scopeSlug(facility), istDateString(), 'png')}
+                meta={{ title: genericRange.label, scope: scopeLabel(facility), range: genericRange.range }}
+              />
+            </div>
+            <div ref={genericTableRef} style={{ overflowX: 'auto', maxHeight: 440 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'var(--mono)' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 3 }}>
+                  <tr style={{ background: 'var(--surface2)', borderBottom: '2px solid var(--border)' }}>
+                    {Object.keys(data[0]).map((h, hi) => (
+                      <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-2)', fontSize: 10, textTransform: 'uppercase', whiteSpace: 'nowrap', ...(hi === 0 ? { position: 'sticky', left: 0, zIndex: 4, background: 'var(--surface2)' } : {}) }}>{h}</th>
                     ))}
                   </tr>
-                ))}
-                {data.length > 200 && (
-                  <tr><td colSpan={Object.keys(data[0]).length} style={{ padding: '8px', textAlign: 'center', color: 'var(--text-3)' }}>
-                    Showing 200 of {data.length} rows — download CSV for full data
-                  </td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </>
+                </thead>
+                <tbody>
+                  {data.slice(0, 200).map((row, i) => {
+                    const rowBg = i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)';
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: rowBg }}>
+                        {Object.values(row).map((v, j) => (
+                          <td key={j} style={{ padding: '7px 10px', whiteSpace: 'nowrap', ...(j === 0 ? { position: 'sticky', left: 0, zIndex: 1, background: rowBg } : {}) }}>{String(v ?? '—')}</td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                  {data.length > 200 && (
+                    <tr><td colSpan={Object.keys(data[0]).length} style={{ padding: '8px', textAlign: 'center', color: 'var(--text-3)' }}>
+                      Showing 200 of {data.length} rows — download CSV for full data
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <EmptyState />
+        )
       )}
 
-      {!loading && pivotData && pivotData.rows.length > 0 && (
-        <DeptPivotTable
-          rows={pivotData.rows}
-          grandTotals={pivotData.grandTotals}
-          grandTotal={pivotData.grandTotal}
-        />
+      {!loading && reportType === 'pivot' && pivotData && (
+        pivotData.rows.length > 0 ? (
+          <DeptPivotTable
+            rows={pivotData.rows}
+            grandTotals={pivotData.grandTotals}
+            grandTotal={pivotData.grandTotal}
+            facility={facility}
+            fromDate={pivotRange.from}
+            toDate={pivotRange.to}
+          />
+        ) : (
+          <EmptyState />
+        )
       )}
 
       {!loading && reportType === 'manpower' && manpowerData && (
-        <ManpowerSummaryTable data={manpowerData} />
+        <ManpowerSummaryTable data={manpowerData} facility={facility} />
       )}
 
       {!loading && reportType === 'rate' && rateData && (
-        <AttendanceRateTable data={rateData} fromDate={rateRange.from} toDate={rateRange.to} />
-      )}
-
-      {!loading && (data?.length === 0 || pivotData?.rows.length === 0) && (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)', fontFamily: 'var(--mono)', fontSize: 13 }}>
-          No data for the selected filters
-        </div>
+        <AttendanceRateTable data={rateData} fromDate={rateRange.from} toDate={rateRange.to} facility={facility} />
       )}
     </div>
   );

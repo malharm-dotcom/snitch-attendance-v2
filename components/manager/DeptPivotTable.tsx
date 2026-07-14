@@ -1,6 +1,10 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { ATTENDANCE_STATUSES } from '@/lib/constants';
+import ExportControls from './ExportControls';
+import { scopeLabel, scopeSlug, reportFilename } from '@/lib/reportExport';
+import { istDateString } from '@/lib/ist';
 
 const STATUS_SHORT: Record<string, string> = {
   'Present':           'P',
@@ -46,6 +50,9 @@ interface Props {
   rows: PivotRow[];
   grandTotals: Record<string, number>;
   grandTotal: number;
+  facility: string;
+  fromDate: string;
+  toDate: string;
 }
 
 const th: React.CSSProperties = {
@@ -64,7 +71,17 @@ const th: React.CSSProperties = {
   fontWeight: 500,
 };
 
-export default function DeptPivotTable({ rows, grandTotals, grandTotal }: Props) {
+export default function DeptPivotTable({ rows, grandTotals, grandTotal, facility, fromDate, toDate }: Props) {
+  const [showAll, setShowAll] = useState(false);
+  const priorShowAll = useRef(false);
+  const captureRef = useRef<HTMLDivElement>(null);
+
+  // A status column is "empty" when it is zero across every row (grandTotals sums all rows).
+  const nonEmptyStatuses = ATTENDANCE_STATUSES.filter((s) => (grandTotals[s] ?? 0) > 0);
+  const hiddenCount = ATTENDANCE_STATUSES.length - nonEmptyStatuses.length;
+  // On-screen columns respect the toggle; CSV always uses the full set.
+  const displayStatuses = showAll ? ATTENDANCE_STATUSES : nonEmptyStatuses;
+
   function downloadCSV() {
     const headers = ['Department', ...ATTENDANCE_STATUSES, 'Total'];
     const dataRows = rows.map((r) => [
@@ -91,19 +108,33 @@ export default function DeptPivotTable({ rows, grandTotals, grandTotal }: Props)
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)' }}>
-          {rows.length} department{rows.length !== 1 ? 's' : ''}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-2)' }}>
+          <span>{rows.length} department{rows.length !== 1 ? 's' : ''}</span>
+          {hiddenCount > 0 && (
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              style={{ padding: '5px 10px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 11, cursor: 'pointer', background: 'var(--surface)', color: 'var(--text-2)' }}
+            >
+              {showAll ? 'Hide empty columns' : `Show all columns (${hiddenCount} hidden)`}
+            </button>
+          )}
         </span>
-        <button
-          onClick={downloadCSV}
-          style={{ padding: '7px 14px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer', background: 'var(--surface)' }}
-        >
-          ↓ Download CSV
-        </button>
+        <ExportControls
+          onDownloadCSV={downloadCSV}
+          captureRef={captureRef}
+          pngFilename={reportFilename('dept-pivot', scopeSlug(facility), istDateString(), 'png')}
+          meta={{
+            title: 'Department Pivot',
+            scope: scopeLabel(facility),
+            range: `${fromDate} → ${toDate}`,
+          }}
+          onBeforeCapture={() => { priorShowAll.current = showAll; setShowAll(true); }}
+          onAfterCapture={() => setShowAll(priorShowAll.current)}
+        />
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
+      <div ref={captureRef} style={{ overflowX: 'auto' }}>
         <table style={{ fontSize: 12, fontFamily: 'var(--mono)', minWidth: 'max-content', borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr>
@@ -121,7 +152,7 @@ export default function DeptPivotTable({ rows, grandTotals, grandTotal }: Props)
               }}>
                 Department
               </th>
-              {ATTENDANCE_STATUSES.map((s) => (
+              {displayStatuses.map((s) => (
                 <th key={s} title={s} style={th}>{STATUS_SHORT[s] ?? s}</th>
               ))}
               <th style={{
@@ -158,7 +189,7 @@ export default function DeptPivotTable({ rows, grandTotals, grandTotal }: Props)
                   }}>
                     {row.department}
                   </td>
-                  {ATTENDANCE_STATUSES.map((s) => {
+                  {displayStatuses.map((s) => {
                     const count = row.statusCounts[s] ?? 0;
                     return (
                       <td key={s} style={{
@@ -204,7 +235,7 @@ export default function DeptPivotTable({ rows, grandTotals, grandTotal }: Props)
               }}>
                 TOTAL
               </td>
-              {ATTENDANCE_STATUSES.map((s) => {
+              {displayStatuses.map((s) => {
                 const count = grandTotals[s] ?? 0;
                 return (
                   <td key={s} style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700 }}>
