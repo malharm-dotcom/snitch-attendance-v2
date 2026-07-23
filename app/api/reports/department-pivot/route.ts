@@ -24,6 +24,13 @@ export async function GET(request: NextRequest) {
       ? `h2.facility IN ('WH1','WH2')`
       : `h2.facility = '${session.facility.replace(/'/g, "''")}'`;
 
+    // Shift filter (optional). Whitelisted — never interpolate raw input.
+    // Same rule as the Attendance Rate report; anchored to the header shift
+    // this query already partitions by (NULL treated as 'Day').
+    const shiftParam = searchParams.get('shift') ?? '';
+    const shift = shiftParam === 'Day' || shiftParam === 'Night' ? shiftParam : '';
+    const shiftClause = shift ? `AND LOWER(TRIM(COALESCE(h2.shift,'Day'))) = '${shift.toLowerCase()}'` : '';
+
     const raw = await prisma.$queryRawUnsafe<{ department: string; attendance_status: string; cnt: number }[]>(`
       SELECT
         h.department          AS department,
@@ -39,7 +46,7 @@ export async function GET(request: NextRequest) {
           h2.id AS hid
         FROM attendance_detail d2
         JOIN attendance_header h2 ON d2.attendance_header_id = h2.id
-        WHERE ${facilityClause}
+        WHERE ${facilityClause} ${shiftClause}
           AND d2.attendance_date BETWEEN $1::date AND $2::date
       ) sub
       JOIN attendance_detail d ON d.id = sub.id
@@ -71,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     const grandTotal = Object.values(grandTotals).reduce((a, b) => a + b, 0);
 
-    return NextResponse.json({ rows, grandTotals, grandTotal });
+    return NextResponse.json({ shift: shift || 'All', rows, grandTotals, grandTotal });
   } catch (error) {
     console.error('GET /api/reports/department-pivot error:', error);
     return NextResponse.json({ error: (error as Error).message ?? 'Failed to generate pivot report' }, { status: 500 });

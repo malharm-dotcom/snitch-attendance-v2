@@ -53,6 +53,8 @@ interface Props {
   facility: string;
   fromDate: string;
   toDate: string;
+  /** Shift the report was run with, echoed by the API: 'All' | 'Day' | 'Night'. */
+  shift: string;
 }
 
 const th: React.CSSProperties = {
@@ -71,7 +73,7 @@ const th: React.CSSProperties = {
   fontWeight: 500,
 };
 
-export default function DeptPivotTable({ rows, grandTotals, grandTotal, facility, fromDate, toDate }: Props) {
+export default function DeptPivotTable({ rows, grandTotals, grandTotal, facility, fromDate, toDate, shift }: Props) {
   const [showAll, setShowAll] = useState(false);
   const priorShowAll = useRef(false);
   const captureRef = useRef<HTMLDivElement>(null);
@@ -101,7 +103,7 @@ export default function DeptPivotTable({ rows, grandTotals, grandTotal, facility
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'dept-pivot.csv';
+    a.download = `dept-pivot-${shift.toLowerCase()}-${fromDate}_${toDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -126,7 +128,7 @@ export default function DeptPivotTable({ rows, grandTotals, grandTotal, facility
           pngFilename={reportFilename('dept-pivot', scopeSlug(facility), istDateString(), 'png')}
           meta={{
             title: 'Department Pivot',
-            scope: scopeLabel(facility),
+            scope: `${scopeLabel(facility)}  ·  ${shift} shift`,
             range: `${fromDate} → ${toDate}`,
           }}
           onBeforeCapture={() => { priorShowAll.current = showAll; setShowAll(true); }}

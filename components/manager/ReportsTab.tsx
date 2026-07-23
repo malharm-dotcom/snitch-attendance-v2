@@ -18,6 +18,7 @@ interface ReportsTabProps {
 type ReportType = 'daily' | 'range' | 'pivot' | 'manpower' | 'rate';
 
 interface PivotResult {
+  shift: string;
   rows: { department: string; statusCounts: Record<string, number>; total: number }[];
   grandTotals: Record<string, number>;
   grandTotal: number;
@@ -73,7 +74,9 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
         if (shift) params.append('shift', shift);
         url = `/api/reports/range?${params}`;
       } else if (reportType === 'pivot') {
-        url = `/api/reports/department-pivot?from=${fromDate}&to=${toDate}`;
+        const params = new URLSearchParams({ from: fromDate, to: toDate });
+        if (shift) params.append('shift', shift);
+        url = `/api/reports/department-pivot?${params}`;
       } else if (reportType === 'manpower') {
         url = `/api/reports/manpower-summary`;
       } else if (reportType === 'rate') {
@@ -199,6 +202,16 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
                 </div>
               </>
             )}
+            {reportType === 'pivot' && (
+              <div>
+                <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Shift</label>
+                <select value={shift} onChange={(e) => setShift(e.target.value)} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13, background: 'var(--surface)' }}>
+                  <option value="">All shifts</option>
+                  <option value="Day">Day</option>
+                  <option value="Night">Night</option>
+                </select>
+              </div>
+            )}
             {reportType === 'rate' && (
               <>
                 <div>
@@ -292,6 +305,7 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
             facility={facility}
             fromDate={pivotRange.from}
             toDate={pivotRange.to}
+            shift={pivotData.shift}
           />
         ) : (
           <EmptyState />
