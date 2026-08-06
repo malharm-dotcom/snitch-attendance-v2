@@ -90,15 +90,20 @@ export function normalizeShift(shift: string | null | undefined): string {
 }
 
 /**
- * Facility data anomaly (signed off 2026-07-09): employees.facility contains
- * "North_Wh" for 45 active off-roll employees. Treat it as NORTH at read time.
+ * Facility normalization for the Reports section: trim only.
+ *
+ * The former "North_Wh" -> "NORTH" fold (added 2026-07-09) was removed: those 45
+ * rows are a field-swapped duplicate ghost batch (2026-05-21 load) whose columns
+ * hold name-in-employee_code and GS-code-in-employee_name, and every one of them
+ * duplicates an employee already present under facility='NORTH' (the GS-code twin
+ * is the record actually marked daily). They are not real North staff and must not
+ * fold into NORTH — folding them double-counted 28 current employees and revived
+ * 17 already-exited ones, inflating NORTH active headcount to 343 vs a true 298.
+ * North_Wh now normalizes to itself and falls outside every facility scope.
  */
 export function normalizeFacility(facility: string): string {
-  const f = facility.trim();
-  if (f.toLowerCase() === 'north_wh') return 'NORTH';
-  return f;
+  return facility.trim();
 }
 
 /** SQL expression for the same facility normalization (for raw queries). */
-export const SQL_NORM_FACILITY = (col: string) =>
-  `CASE WHEN LOWER(TRIM(${col})) = 'north_wh' THEN 'NORTH' ELSE TRIM(${col}) END`;
+export const SQL_NORM_FACILITY = (col: string) => `TRIM(${col})`;
