@@ -7,6 +7,7 @@ import { istDateString } from '@/lib/ist';
 import Modal from '../shared/Modal';
 import HistoryTable from '../history/HistoryTable';
 import type { HistoryRecord } from '@/lib/types';
+import { ALL_FACILITIES } from '@/lib/reportExport';
 
 interface Submission {
   facility: string;
@@ -70,6 +71,32 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
     } catch {
       setDetailRecords([]);
     }
+  }
+
+  // The daily grid is a per-facility operational view: one card per department, showing
+  // whether THAT facility submitted. Across three facilities a department has up to three
+  // different answers and a single card cannot show them, so the aggregate is not offered
+  // here — Employee View and Reports both handle cross-facility scope correctly.
+  if (facility === ALL_FACILITIES) {
+    return (
+      <div style={{
+        background: 'var(--surface2)',
+        border: '1px solid var(--border)',
+        borderLeft: '3px solid var(--accent)',
+        borderRadius: 'var(--r)',
+        padding: '14px 18px',
+        fontFamily: 'var(--mono)',
+        fontSize: 13,
+        color: 'var(--text-2)',
+        lineHeight: 1.6,
+      }}>
+        <strong style={{ color: 'var(--text)' }}>Select a specific facility for the Daily view.</strong>
+        <br />
+        Each card answers &ldquo;has this department submitted?&rdquo; — a question with a
+        different answer per facility. Use <strong>Employee View</strong> or the{' '}
+        <strong>Reports</strong> tab for cross-facility data.
+      </div>
+    );
   }
 
   const submissionMap = new Map(submissions.map((s) => [`${s.facility}|${s.department}`, s]));

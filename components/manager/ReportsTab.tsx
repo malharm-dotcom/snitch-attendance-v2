@@ -3,13 +3,14 @@
 import { useRef, useState } from 'react';
 import { DEPARTMENTS } from '@/lib/constants';
 import { istDateString } from '@/lib/ist';
-import { scopeLabel, scopeSlug, reportFilename } from '@/lib/reportExport';
+import { scopeLabel, scopeSlug, reportFilename, ALL_FACILITIES } from '@/lib/reportExport';
 import { useToast } from '../shared/Toast';
 import DeptPivotTable from './DeptPivotTable';
 import ManpowerSummaryTable, { type ManpowerData } from './ManpowerSummaryTable';
 import AttendanceRateTable, { type RateData } from './AttendanceRateTable';
 import ExportControls from './ExportControls';
 import EmptyState from './EmptyState';
+import ScopeNote from './ScopeNote';
 
 interface ReportsTabProps {
   facility: string;
@@ -243,6 +244,9 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
           {loading ? 'Running...' : 'Run Report'}
         </button>
       </div>
+
+      {/* Cross-facility aggregate: always state the counting rule alongside the numbers. */}
+      {facility === ALL_FACILITIES && <ScopeNote reportType={reportType} />}
 
       {/* Results */}
       {loading && (
