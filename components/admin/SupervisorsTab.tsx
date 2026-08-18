@@ -74,6 +74,142 @@ const emptyForm = (): EditForm => ({
   newPassword: '',
 });
 
+function toggleDept(form: EditForm, dept: string, setter: (f: EditForm) => void) {
+  const next = form.departments.includes(dept)
+    ? form.departments.filter((d) => d !== dept)
+    : [...form.departments, dept];
+  setter({ ...form, departments: next });
+}
+
+function DeptCheckboxes({ form, setter }: { form: EditForm; setter: (f: EditForm) => void }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {DEPARTMENTS.map((d) => (
+        <label key={d} style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '5px 10px',
+          border: '1.5px solid',
+          borderColor: form.departments.includes(d) ? 'var(--accent)' : 'var(--border)',
+          borderRadius: 20,
+          fontFamily: 'var(--mono)',
+          fontSize: 11,
+          cursor: 'pointer',
+          background: form.departments.includes(d) ? 'rgba(79,70,229,0.08)' : 'transparent',
+          transition: 'all 0.12s',
+          userSelect: 'none',
+        }}>
+          <input
+            type="checkbox"
+            checked={form.departments.includes(d)}
+            onChange={() => toggleDept(form, d, setter)}
+            style={{ display: 'none' }}
+          />
+          {d}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function FormPanel({ form, setter, title, onSave, onCancel, allowFacilityChange, saving, passwordVisible, onTogglePassword }: {
+  form: EditForm;
+  setter: (f: EditForm) => void;
+  title: string;
+  onSave: () => void;
+  onCancel: () => void;
+  allowFacilityChange?: boolean;
+  saving: boolean;
+  passwordVisible: boolean;
+  onTogglePassword: () => void;
+}) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 1000, padding: 16,
+      animation: 'fadeIn 0.15s ease',
+    }}>
+      <div style={{
+        background: 'var(--surface)',
+        borderRadius: 'var(--r)',
+        padding: '28px 32px',
+        width: '100%',
+        maxWidth: 560,
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.2)',
+      }}>
+        <h3 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, margin: 0 }}>{title}</h3>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Name">
+            <input value={form.supervisorName} onChange={(e) => setter({ ...form, supervisorName: e.target.value })} style={inputStyle} onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }} onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }} />
+          </Field>
+          <Field label="Employee Code">
+            <input value={form.employeeCode} onChange={(e) => setter({ ...form, employeeCode: e.target.value })} placeholder="e.g. SAPL00264" style={inputStyle} onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }} onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }} />
+          </Field>
+          <Field label="Facility">
+            {allowFacilityChange ? (
+              <select value={form.facility} onChange={(e) => setter({ ...form, facility: e.target.value })} style={{ ...inputStyle, color: 'var(--text)' }}>
+                {(['WH1', 'WH2'] as string[]).map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
+            ) : (
+              <div style={{ ...inputStyle, background: 'var(--surface2)', color: 'var(--text-2)', cursor: 'default' }}>{form.facility}</div>
+            )}
+          </Field>
+          <Field label="Role">
+            <select value={form.role} onChange={(e) => setter({ ...form, role: e.target.value })} style={{ ...inputStyle }}>
+              {ROLES.map((r) => <option key={r} value={r} style={{ textTransform: 'capitalize' }}>{r}</option>)}
+            </select>
+          </Field>
+        </div>
+
+        <Field label="Departments">
+          <DeptCheckboxes form={form} setter={setter} />
+        </Field>
+
+        <Field label={form.id ? 'New Password (leave blank to keep current)' : 'Password'}>
+          <div style={{ position: 'relative' }}>
+            <input
+              type={passwordVisible ? 'text' : 'password'}
+              value={form.newPassword}
+              onChange={(e) => setter({ ...form, newPassword: e.target.value })}
+              placeholder={form.id ? 'Leave blank to keep current' : 'Set initial password'}
+              style={{ ...inputStyle, paddingRight: 52 }}
+              onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
+              onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
+            />
+            <button type="button" onClick={onTogglePassword} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)' }}>
+              {passwordVisible ? 'hide' : 'show'}
+            </button>
+          </div>
+        </Field>
+
+        {form.id && (
+          <Field label="Status">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13 }}>
+              <input type="checkbox" checked={form.isActive} onChange={(e) => setter({ ...form, isActive: e.target.checked })} />
+              Active
+            </label>
+          </Field>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+          <button onClick={onCancel} style={{ padding: '9px 18px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onSave} disabled={saving} style={{ padding: '9px 18px', border: 'none', borderRadius: 8, background: saving ? 'var(--surface2)' : 'var(--accent)', color: saving ? 'var(--text-3)' : 'var(--accent-text)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SupervisorsTab() {
   const [supervisors, setSupervisors] = useState<SupervisorRow[]>([]);
   const [currentUser, setCurrentUser] = useState('');
@@ -120,13 +256,6 @@ export default function SupervisorsTab() {
       isActive: sup.isActive,
       newPassword: '',
     });
-  }
-
-  function toggleDept(form: EditForm, dept: string, setter: (f: EditForm) => void) {
-    const next = form.departments.includes(dept)
-      ? form.departments.filter((d) => d !== dept)
-      : [...form.departments, dept];
-    setter({ ...form, departments: next });
   }
 
   async function saveEdit() {
@@ -233,132 +362,6 @@ export default function SupervisorsTab() {
     manager:    { background: 'rgba(79,70,229,0.1)',  color: '#4f46e5' },
     supervisor: { background: 'rgba(22,163,74,0.1)',  color: '#16a34a' },
   };
-
-  function DeptCheckboxes({ form, setter }: { form: EditForm; setter: (f: EditForm) => void }) {
-    return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {DEPARTMENTS.map((d) => (
-          <label key={d} style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 10px',
-            border: '1.5px solid',
-            borderColor: form.departments.includes(d) ? 'var(--accent)' : 'var(--border)',
-            borderRadius: 20,
-            fontFamily: 'var(--mono)',
-            fontSize: 11,
-            cursor: 'pointer',
-            background: form.departments.includes(d) ? 'rgba(79,70,229,0.08)' : 'transparent',
-            transition: 'all 0.12s',
-            userSelect: 'none',
-          }}>
-            <input
-              type="checkbox"
-              checked={form.departments.includes(d)}
-              onChange={() => toggleDept(form, d, setter)}
-              style={{ display: 'none' }}
-            />
-            {d}
-          </label>
-        ))}
-      </div>
-    );
-  }
-
-  function FormPanel({ form, setter, title, onSave, onCancel, allowFacilityChange }: {
-    form: EditForm;
-    setter: (f: EditForm) => void;
-    title: string;
-    onSave: () => void;
-    onCancel: () => void;
-    allowFacilityChange?: boolean;
-  }) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 1000, padding: 16,
-        animation: 'fadeIn 0.15s ease',
-      }}>
-        <div style={{
-          background: 'var(--surface)',
-          borderRadius: 'var(--r)',
-          padding: '28px 32px',
-          width: '100%',
-          maxWidth: 560,
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          boxShadow: '0 8px 40px rgba(0,0,0,0.2)',
-        }}>
-          <h3 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, margin: 0 }}>{title}</h3>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field label="Name">
-              <input value={form.supervisorName} onChange={(e) => setter({ ...form, supervisorName: e.target.value })} style={inputStyle} onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }} onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }} />
-            </Field>
-            <Field label="Employee Code">
-              <input value={form.employeeCode} onChange={(e) => setter({ ...form, employeeCode: e.target.value })} placeholder="e.g. SAPL00264" style={inputStyle} onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }} onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }} />
-            </Field>
-            <Field label="Facility">
-              {allowFacilityChange ? (
-                <select value={form.facility} onChange={(e) => setter({ ...form, facility: e.target.value })} style={{ ...inputStyle, color: 'var(--text)' }}>
-                  {(['WH1', 'WH2'] as string[]).map((f) => <option key={f} value={f}>{f}</option>)}
-                </select>
-              ) : (
-                <div style={{ ...inputStyle, background: 'var(--surface2)', color: 'var(--text-2)', cursor: 'default' }}>{form.facility}</div>
-              )}
-            </Field>
-            <Field label="Role">
-              <select value={form.role} onChange={(e) => setter({ ...form, role: e.target.value })} style={{ ...inputStyle }}>
-                {ROLES.map((r) => <option key={r} value={r} style={{ textTransform: 'capitalize' }}>{r}</option>)}
-              </select>
-            </Field>
-          </div>
-
-          <Field label="Departments">
-            <DeptCheckboxes form={form} setter={setter} />
-          </Field>
-
-          <Field label={form.id ? 'New Password (leave blank to keep current)' : 'Password'}>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={passwordVisible ? 'text' : 'password'}
-                value={form.newPassword}
-                onChange={(e) => setter({ ...form, newPassword: e.target.value })}
-                placeholder={form.id ? 'Leave blank to keep current' : 'Set initial password'}
-                style={{ ...inputStyle, paddingRight: 52 }}
-                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
-                onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
-              />
-              <button type="button" onClick={() => setPasswordVisible((v) => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)' }}>
-                {passwordVisible ? 'hide' : 'show'}
-              </button>
-            </div>
-          </Field>
-
-          {form.id && (
-            <Field label="Status">
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13 }}>
-                <input type="checkbox" checked={form.isActive} onChange={(e) => setter({ ...form, isActive: e.target.checked })} />
-                Active
-              </label>
-            </Field>
-          )}
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={onCancel} style={{ padding: '9px 18px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'none', fontFamily: 'var(--mono)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
-            <button onClick={onSave} disabled={saving} style={{ padding: '9px 18px', border: 'none', borderRadius: 8, background: saving ? 'var(--surface2)' : 'var(--accent)', color: saving ? 'var(--text-3)' : 'var(--accent-text)', fontFamily: 'var(--display)', fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}>
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -474,6 +477,9 @@ export default function SupervisorsTab() {
           title={`Edit — ${editForm.supervisorName}`}
           onSave={saveEdit}
           onCancel={() => setEditForm(null)}
+          saving={saving}
+          passwordVisible={passwordVisible}
+          onTogglePassword={() => setPasswordVisible((v) => !v)}
         />
       )}
 
@@ -485,6 +491,9 @@ export default function SupervisorsTab() {
           onSave={saveAdd}
           onCancel={() => setShowAdd(false)}
           allowFacilityChange={isSouthAdmin}
+          saving={saving}
+          passwordVisible={passwordVisible}
+          onTogglePassword={() => setPasswordVisible((v) => !v)}
         />
       )}
 

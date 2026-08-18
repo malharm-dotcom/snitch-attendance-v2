@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { DEPARTMENTS } from '@/lib/constants';
 import { useToast } from '../shared/Toast';
 import { istDateString } from '@/lib/ist';
@@ -559,14 +560,27 @@ export default function EmployeesTab() {
       )}
 
       {/* ── Add Employee modal ── */}
-      {addForm && (
-        <div style={modalOverlay}>
+      {/* Portaled to document.body so it centers in the viewport regardless of any ancestor
+          CSS containing block (the .tab-panel transform animation) — no scrolling to reach it. */}
+      {addForm && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setAddForm(null); }}
+          style={{ ...modalOverlay, zIndex: 9000 }}
+        >
           <div style={modalBox}>
-            <div>
-              <h3 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, margin: 0 }}>Add Employee</h3>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                All fields marked * are required
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <h3 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, margin: 0 }}>Add Employee</h3>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+                  All fields marked * are required
+                </div>
               </div>
+              <button
+                onClick={() => setAddForm(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-2)', lineHeight: 1, padding: '2px 6px' }}
+              >
+                ×
+              </button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -701,7 +715,8 @@ export default function EmployeesTab() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Edit modal ── */}
