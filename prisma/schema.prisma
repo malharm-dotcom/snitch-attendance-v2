@@ -17,6 +17,7 @@ model Supervisor {
   pin            String   @db.VarChar(10)
   passwordHash   String?  @map("password_hash") @db.Text
   role           String   @default("supervisor") @db.VarChar(20)
+  allFacilities  Boolean  @default(false) @map("all_facilities")
   isActive       Boolean  @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at")
 

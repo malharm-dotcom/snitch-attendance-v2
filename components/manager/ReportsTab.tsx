@@ -64,12 +64,13 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
     try {
       let url = '';
 
+      // No facility param on any report — every one scopes from the session.
       if (reportType === 'daily') {
-        const params = new URLSearchParams({ date, facility });
+        const params = new URLSearchParams({ date });
         if (shift) params.append('shift', shift);
         url = `/api/reports/daily-summary?${params}`;
       } else if (reportType === 'range') {
-        const params = new URLSearchParams({ from_date: fromDate, to_date: toDate, facility });
+        const params = new URLSearchParams({ from_date: fromDate, to_date: toDate });
         if (deptFilter) params.append('department', deptFilter);
         if (shift) params.append('shift', shift);
         url = `/api/reports/range?${params}`;

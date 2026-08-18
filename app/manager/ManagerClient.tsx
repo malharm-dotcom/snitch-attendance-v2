@@ -17,12 +17,13 @@ type RecordsTab = 'log' | 'reports';
 interface Props {
   supervisorName: string;
   facility: string;
+  allFacilities: boolean;
   department: string;
   departments: string[];
   role: string;
 }
 
-function ManagerInner({ supervisorName, facility, role }: Props) {
+function ManagerInner({ supervisorName, facility, allFacilities, role }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('records');
   const [requests, setRequests] = useState<RewriteRequest[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -100,7 +101,7 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
   return (
     <>
       <OfflineBanner />
-      <Topbar name={supervisorName} role={role} />
+      <Topbar name={supervisorName} role={role} facility={facility} allFacilities={allFacilities} allowAggregate />
 
       <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)', padding: '0 20px', display: 'flex', gap: 0, overflowX: 'auto' }}>
         {tabs.map((tab) => (
@@ -220,7 +221,7 @@ function ManagerInner({ supervisorName, facility, role }: Props) {
                     </button>
                   ))}
                 </div>
-                {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix facility={facility} />}
+                {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix />}
               </div>
             )}
             {recordsTab === 'reports' && <ReportsTab facility={facility} />}

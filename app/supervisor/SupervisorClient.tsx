@@ -11,12 +11,13 @@ import OfflineBanner from '@/components/shared/OfflineBanner';
 interface Props {
   supervisorName: string;
   facility: string;
+  allFacilities: boolean;
   department: string;
   departments: string[];
   role: string;
 }
 
-export default function SupervisorClient({ supervisorName, facility, department, departments, role }: Props) {
+export default function SupervisorClient({ supervisorName, facility, allFacilities, department, departments, role }: Props) {
   const [activeTab, setActiveTab] = useState<'mark' | 'history'>('mark');
   const [shift, setShift] = useState<'Day' | 'Night'>('Day');
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
@@ -29,7 +30,8 @@ export default function SupervisorClient({ supervisorName, facility, department,
   return (
     <ToastProvider>
       <OfflineBanner />
-      <Topbar name={supervisorName} role={role} />
+      {/* Supervisors mark attendance only — no cross-facility aggregate option. */}
+      <Topbar name={supervisorName} role={role} facility={facility} allFacilities={allFacilities} />
       <SessionBanner
         name={supervisorName}
         facility={facility}
@@ -78,7 +80,7 @@ export default function SupervisorClient({ supervisorName, facility, department,
         )}
         {activeTab === 'history' && (
           <div className="tab-panel">
-            <HistoryPanel facility={facility} departments={departments} />
+            <HistoryPanel departments={departments} />
           </div>
         )}
       </main>

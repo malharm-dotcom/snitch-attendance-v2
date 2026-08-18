@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { istNow, parseISTDate } from '@/lib/ist';
+import { parseISTDate } from '@/lib/ist';
 import { ATTENDANCE_CUTOFF_HOUR_IST } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
+import { requireWriteFacility } from '@/lib/facilityScope';
 
 interface EmployeeSubmit {
   employee_id?: number | null;
@@ -13,7 +15,8 @@ interface EmployeeSubmit {
 
 interface SubmitBody {
   attendance_date: string;
-  facility: string;
+  /** Optional. Validated against the session's allowed set; never widens scope. */
+  facility?: string;
   department: string;
   marked_by: string;
   shift: string;
@@ -22,10 +25,25 @@ interface SubmitBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const body: SubmitBody = await request.json();
-    const { attendance_date, facility, department, marked_by, shift, employees } = body;
+    const session = await getSession();
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!attendance_date || !facility || !department || !marked_by || !employees?.length) {
+    const body: SubmitBody = await request.json();
+    const { attendance_date, department, marked_by, shift, employees } = body;
+
+    // Writes always target ONE concrete facility. An all-access user viewing
+    // "All facilities" has no write target and is blocked here, not just in the UI.
+    // A named facility is honoured only if it is inside the session's allowed set —
+    // that keeps a South supervisor's WH2 employees stamped WH2, as before.
+    const write = requireWriteFacility(session, body.facility);
+    if ('error' in write) {
+      return NextResponse.json({ error: write.error }, { status: 403 });
+    }
+    const facility = write.facility;
+
+    if (!attendance_date || !department || !marked_by || !employees?.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 

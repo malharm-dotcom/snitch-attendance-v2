@@ -159,6 +159,7 @@ export default function EmployeesTab() {
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [currentFacility, setCurrentFacility] = useState('');
   const [isSouthAdmin, setIsSouthAdmin] = useState(false);
+  const [allowedFacilities, setAllowedFacilities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [addForm, setAddForm] = useState<AddForm | null>(null);
@@ -179,6 +180,7 @@ export default function EmployeesTab() {
       setEmployees(data.employees ?? []);
       setCurrentFacility(data.currentFacility ?? '');
       setIsSouthAdmin(data.isSouthAdmin ?? false);
+      setAllowedFacilities(data.allowedFacilities ?? []);
     } catch {
       showToast('Failed to load employees', 'error');
     } finally {
@@ -262,7 +264,7 @@ export default function EmployeesTab() {
     setAddForm({
       employeeCode: '',
       employeeName: '',
-      facility: isSouthAdmin ? 'WH1' : currentFacility,
+      facility: isSouthAdmin ? (allowedFacilities[0] ?? 'WH1') : currentFacility,
       department: DEPARTMENTS[0] ?? '',
       joiningDate: '',
       shift: '',
@@ -613,7 +615,7 @@ export default function EmployeesTab() {
                     onChange={(e) => setAddForm({ ...addForm, facility: e.target.value })}
                     style={{ ...inputStyle, color: 'var(--text)' }}
                   >
-                    {['WH1', 'WH2'].map((f) => <option key={f} value={f}>{f}</option>)}
+                    {allowedFacilities.map((f) => <option key={f} value={f}>{f}</option>)}
                   </select>
                 ) : (
                   <div style={{ ...inputStyle, background: 'var(--surface2)', color: 'var(--text-2)', cursor: 'default' }}>
@@ -751,7 +753,7 @@ export default function EmployeesTab() {
                     onChange={(e) => setEditForm({ ...editForm, facility: e.target.value })}
                     style={{ ...inputStyle, color: 'var(--text)' }}
                   >
-                    {['WH1', 'WH2'].map((f) => <option key={f} value={f}>{f}</option>)}
+                    {allowedFacilities.map((f) => <option key={f} value={f}>{f}</option>)}
                   </select>
                 ) : (
                   <div style={{ ...inputStyle, background: 'var(--surface2)', color: 'var(--text-2)', cursor: 'default' }}>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
 import { parseISTDate } from '@/lib/ist';
 import { ATTENDANCE_STATUSES } from '@/lib/constants';
 
@@ -19,10 +20,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'from and to are required' }, { status: 400 });
     }
 
-    const south = isSouth(session.facility);
-    const facilityClause = south
-      ? `h2.facility IN ('WH1','WH2')`
-      : `h2.facility = '${session.facility.replace(/'/g, "''")}'`;
+    const scope = resolveFacilityScope(session);
+    const facilityClause = facilitySqlIn('h2.facility', scope);
 
     // Shift filter (optional). Whitelisted — never interpolate raw input.
     // Same rule as the Attendance Rate report; anchored to the header shift
@@ -78,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     const grandTotal = Object.values(grandTotals).reduce((a, b) => a + b, 0);
 
-    return NextResponse.json({ shift: shift || 'All', rows, grandTotals, grandTotal });
+    return NextResponse.json({ scope: scope.label, shift: shift || 'All', rows, grandTotals, grandTotal });
   } catch (error) {
     console.error('GET /api/reports/department-pivot error:', error);
     return NextResponse.json({ error: (error as Error).message ?? 'Failed to generate pivot report' }, { status: 500 });

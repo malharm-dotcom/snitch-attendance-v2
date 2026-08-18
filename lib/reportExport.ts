@@ -1,12 +1,17 @@
 import { SOUTH_FACILITIES } from './constants';
 
-/** Human-readable facility scope for header bands. Mirrors server isSouth(). */
+/** Mirrors lib/facilityScope.ts ALL_FACILITIES — client-side label rendering only. */
+export const ALL_FACILITIES = '__all__';
+
+/** Human-readable facility scope for header bands. Mirrors server resolveFacilityScope().label. */
 export function scopeLabel(facility: string): string {
+  if (facility === ALL_FACILITIES) return 'All facilities';
   return SOUTH_FACILITIES.includes(facility) ? 'South (WH1 + WH2)' : facility;
 }
 
 /** Filename-safe scope slug: South collapses to SOUTH, NORTH stays NORTH. */
 export function scopeSlug(facility: string): string {
+  if (facility === ALL_FACILITIES) return 'ALL';
   return SOUTH_FACILITIES.includes(facility) ? 'SOUTH' : facility;
 }
 

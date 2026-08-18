@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilityPrismaFilter } from '@/lib/facilityScope';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,9 +14,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
 
     // WH1 and WH2 are adjacent — admins/managers see both facilities' requests
-    const facilityFilter = isSouth(session.facility)
-      ? { in: ['WH1', 'WH2'] }
-      : { equals: session.facility };
+    const facilityFilter = facilityPrismaFilter(resolveFacilityScope(session));
 
     const requests = await prisma.attendanceRewriteRequest.findMany({
       where: {

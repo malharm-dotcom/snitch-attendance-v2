@@ -12,6 +12,7 @@ import { useToast } from '../shared/Toast';
 import { istDateString } from '@/lib/ist';
 import { formatIST } from '@/lib/formatIST';
 import { ATTENDANCE_CUTOFF_HOUR_IST } from '@/lib/constants';
+import { ALL_FACILITIES } from '@/lib/reportExport';
 
 interface CheckStatus {
   submitted: boolean;
@@ -110,8 +111,8 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
 
     try {
       const [empRes, checkRes] = await Promise.all([
-        fetch(`/api/employees?facility=${facility}&departments=${departments.join(',')}&shift=${shift}&date=${date}`),
-        fetch(`/api/attendance/check?facility=${facility}&department=${departments[0]}&attendance_date=${date}&shift=${shift}`),
+        fetch(`/api/employees?departments=${departments.join(',')}&shift=${shift}&date=${date}`),
+        fetch(`/api/attendance/check?department=${departments[0]}&attendance_date=${date}&shift=${shift}`),
       ]);
 
       const empData = await empRes.json();
@@ -373,7 +374,7 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
 
       // Reload check status to reflect updated per-employee summary
       const checkRes = await fetch(
-        `/api/attendance/check?facility=${facility}&department=${departments[0]}&attendance_date=${date}&shift=${shift}`
+        `/api/attendance/check?department=${departments[0]}&attendance_date=${date}&shift=${shift}`
       );
       const checkData = await checkRes.json();
       setCheckStatus(checkData);
@@ -406,6 +407,28 @@ export default function MarkAttendance({ supervisorName, facility, departments, 
     } else {
       setSelectedForRewrite(new Set(rewriteEmployeeList.map((e) => e.employee_code)));
     }
+  }
+
+  // Attendance is always marked for ONE concrete facility. The server refuses a write
+  // while "All facilities" is selected (403); this is the matching UI affordance.
+  if (facility === ALL_FACILITIES) {
+    return (
+      <div style={{
+        background: '#fff8e1',
+        border: '1.5px solid var(--warn)',
+        borderRadius: 'var(--r)',
+        padding: '16px 20px',
+        fontFamily: 'var(--mono)',
+        fontSize: 13,
+        color: 'var(--warn)',
+        lineHeight: 1.6,
+      }}>
+        <strong>Select a specific facility to mark attendance.</strong>
+        <br />
+        &ldquo;All facilities&rdquo; is a read-only reporting scope — pick WH1, WH2 or NORTH
+        from the facility selector in the header.
+      </div>
+    );
   }
 
   return (

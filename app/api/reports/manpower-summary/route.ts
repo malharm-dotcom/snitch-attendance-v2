@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope } from '@/lib/facilityScope';
 import {
   GENDERS,
   ROLL_TYPES,
@@ -111,9 +112,9 @@ export async function GET() {
     }
 
     // Facility scope derived server-side from the session, never from params.
-    const south = isSouth(session.facility);
-    const scopeFacilities = south ? ['WH1', 'WH2'] : [normalizeFacility(session.facility)];
-    const scopeLabel = south ? 'South (WH1 + WH2)' : scopeFacilities[0];
+    const scope = resolveFacilityScope(session);
+    const scopeFacilities = scope.allowed.map(normalizeFacility);
+    const scopeLabel = scope.label;
 
     const raw = await prisma.employee.findMany({
       where: { isActive: true },

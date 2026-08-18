@@ -81,6 +81,11 @@ export async function POST(request: NextRequest) {
       ? supervisor.departments
       : [supervisor.department];
     session.role = supervisor.role as 'supervisor' | 'manager' | 'admin';
+    // All-facility access is a per-user capability, not a role. Seed the selection with the
+    // user's own facility so a concrete facility is always active (marking works immediately);
+    // "All facilities" is only ever reached by an explicit switch.
+    session.allFacilities = supervisor.allFacilities;
+    session.selectedFacility = supervisor.allFacilities ? supervisor.facility : undefined;
     session.isLoggedIn = true;
     await session.save();
 
@@ -91,6 +96,7 @@ export async function POST(request: NextRequest) {
       department: supervisor.department,
       departments: session.departments,
       role: supervisor.role,
+      all_facilities: supervisor.allFacilities,
     });
   } catch (error) {
     console.error('POST /api/auth error:', error);

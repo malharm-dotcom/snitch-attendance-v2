@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
 import { parseISTDate, formatAttendanceDate } from '@/lib/ist';
 
 /**
@@ -43,15 +44,12 @@ export async function GET(request: NextRequest) {
     const to = new Date(selected.getTime() - 86400000);      // selected - 1 day
     const from = new Date(selected.getTime() - 7 * 86400000); // selected - 7 days
 
-    // Facility scoping derived from session (South = WH1/WH2 cross-visible, NORTH isolated).
-    const south = isSouth(session.facility);
-    const facilityClause = south
-      ? `h2.facility IN ('WH1','WH2')`
-      : `h2.facility = $4`;
+    // Facility scoping derived from session via the single choke point
+    // (South = WH1/WH2 cross-visible, NORTH isolated, all-access = the selected facility).
+    const facilityClause = facilitySqlIn('h2.facility', resolveFacilityScope(session));
 
     // Dedup to the latest header/detail per (employee, date) exactly like the history route.
     const params: unknown[] = [codes, from, to];
-    if (!south) params.push(session.facility);
 
     const records = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT

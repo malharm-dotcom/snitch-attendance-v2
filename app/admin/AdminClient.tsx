@@ -21,12 +21,13 @@ type RecordsTab = 'log' | 'reports';
 interface Props {
   supervisorName: string;
   facility: string;
+  allFacilities: boolean;
   department: string;
   departments: string[];
   role: string;
 }
 
-function AdminInner({ supervisorName, facility, department: initialDept, departments, role }: Props) {
+function AdminInner({ supervisorName, facility, allFacilities, department: initialDept, departments, role }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('mark');
   const [shift, setShift] = useState<'Day' | 'Night'>('Day');
   const [currentDept, setCurrentDept] = useState('');
@@ -109,7 +110,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
   return (
     <>
       <OfflineBanner />
-      <Topbar name={supervisorName} role="admin" />
+      <Topbar name={supervisorName} role="admin" facility={facility} allFacilities={allFacilities} allowAggregate />
       <SessionBanner
         name={supervisorName}
         facility={facility}
@@ -214,7 +215,7 @@ function AdminInner({ supervisorName, facility, department: initialDept, departm
                     </button>
                   ))}
                 </div>
-                {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix facility={facility} />}
+                {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix />}
               </div>
             )}
             {recordsTab === 'reports' && <ReportsTab facility={facility} />}

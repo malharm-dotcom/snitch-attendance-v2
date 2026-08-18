@@ -1,25 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
 import { parseISTDate } from '@/lib/ist';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session.isLoggedIn || !['manager', 'admin'].includes(session.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { searchParams } = request.nextUrl;
     const date = searchParams.get('date') ?? '';
     const shift = searchParams.get('shift') ?? '';
-    const facility = searchParams.get('facility') ?? '';
 
     if (!date) {
       return NextResponse.json({ error: 'date is required' }, { status: 400 });
     }
 
-    const south = isSouth(facility);
-    const facilityClause = facility
-      ? south
-        ? `h2.facility IN ('WH1','WH2')`
-        : `h2.facility = '${facility.replace(/'/g, "''")}'`
-      : '1=1';
+    // Facility resolved server-side from the session. The old '1=1' fallback is gone:
+    // an unscoped query would sweep in the North_Wh ghost batch (see lib/reporting.ts).
+    const scope = resolveFacilityScope(session);
+    const facilityClause = facilitySqlIn('h2.facility', scope);
 
     const shiftClause = shift ? `AND h2.shift = '${shift.replace(/'/g, "''")}'` : '';
 
@@ -54,7 +57,7 @@ export async function GET(request: NextRequest) {
       ORDER BY h.facility, h.department
     `, parseISTDate(date));
 
-    return NextResponse.json({ rows });
+    return NextResponse.json({ scope: scope.label, rows });
   } catch (error) {
     console.error('GET /api/reports/daily-summary error:', error);
     return NextResponse.json({ error: (error as Error).message ?? 'Failed to generate report' }, { status: 500 });

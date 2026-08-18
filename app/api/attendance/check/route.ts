@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { parseISTDate } from '@/lib/ist';
-import { isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilityPrismaFilter } from '@/lib/facilityScope';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = request.nextUrl;
-    const facility = searchParams.get('facility') ?? '';
     const department = searchParams.get('department') ?? '';
     const attendance_date = searchParams.get('attendance_date') ?? '';
     const shift = searchParams.get('shift') ?? '';
 
-    if (!facility || !department || !attendance_date) {
-      return NextResponse.json({ error: 'facility, department, and attendance_date are required' }, { status: 400 });
+    if (!department || !attendance_date) {
+      return NextResponse.json({ error: 'department and attendance_date are required' }, { status: 400 });
     }
 
     const parsedDate = parseISTDate(attendance_date);
-    const facilityFilter = isSouth(facility) ? { in: ['WH1', 'WH2'] } : { equals: facility };
+    // Facility is resolved server-side from the session — never accepted from the client.
+    const facilityFilter = facilityPrismaFilter(resolveFacilityScope(session));
 
     const header = await prisma.attendanceHeader.findFirst({
       where: {

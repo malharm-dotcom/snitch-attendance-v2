@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { istNow, parseISTDate } from '@/lib/ist';
+import { getSession } from '@/lib/auth';
+import { requireWriteFacility } from '@/lib/facilityScope';
 
 interface RewriteRequestBody {
   attendance_date: string;
-  facility: string;
+  /** Optional. Validated against the session's allowed set; never widens scope. */
+  facility?: string;
   department: string;
   supervisor_name: string;
   reason: string;
@@ -13,10 +16,23 @@ interface RewriteRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const body: RewriteRequestBody = await request.json();
-    const { attendance_date, facility, department, supervisor_name, reason, employee_codes } = body;
+    const session = await getSession();
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!attendance_date || !facility || !department || !supervisor_name || !reason) {
+    const body: RewriteRequestBody = await request.json();
+    const { attendance_date, department, supervisor_name, reason, employee_codes } = body;
+
+    // A rewrite request is scoped to one concrete facility, constrained server-side to
+    // the session's allowed set (same rule as attendance/submit).
+    const write = requireWriteFacility(session, body.facility);
+    if ('error' in write) {
+      return NextResponse.json({ error: write.error }, { status: 403 });
+    }
+    const facility = write.facility;
+
+    if (!attendance_date || !department || !supervisor_name || !reason) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
     if (!Array.isArray(employee_codes) || employee_codes.length === 0) {

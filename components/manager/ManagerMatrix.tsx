@@ -8,11 +8,7 @@ import type { HistoryRecord } from '@/lib/types';
 
 const ALL_DEPTS = '__all__';
 
-interface ManagerMatrixProps {
-  facility: string;
-}
-
-export default function ManagerMatrix({ facility }: ManagerMatrixProps) {
+export default function ManagerMatrix() {
   const today = istDateString();
   const sevenAgo = istDateString(new Date(Date.now() - 6 * 86400000));
 
@@ -28,8 +24,9 @@ export default function ManagerMatrix({ facility }: ManagerMatrixProps) {
     if (!department && department !== ALL_DEPTS) return;
     setLoading(true);
     try {
+      // No facility param — the server scopes from the session.
       const res = await fetch(
-        `/api/attendance/history-range?facility=${facility}&department=${encodeURIComponent(department)}&from_date=${fromDate}&to_date=${toDate}`
+        `/api/attendance/history-range?department=${encodeURIComponent(department)}&from_date=${fromDate}&to_date=${toDate}`
       );
       const data = await res.json();
       setRecords(data.records ?? []);

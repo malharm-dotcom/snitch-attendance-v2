@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { resolveAllowedFacilities } from '@/lib/facilityScope';
 
 interface EmployeeRow {
   employee_code: string;
@@ -33,8 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No rows provided' }, { status: 400 });
     }
 
-    const { isSouth } = await import('@/lib/auth');
-    const allowedFacilities = isSouth(session.facility) ? ['WH1', 'WH2'] : [session.facility];
+    const allowedFacilities = resolveAllowedFacilities(session);
 
     let inserted = 0;
     let updated = 0;

@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
 import { parseISTDate } from '@/lib/ist';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = request.nextUrl;
-    const facility = searchParams.get('facility') ?? '';
     const department = searchParams.get('department') ?? '';
     const attendance_date = searchParams.get('attendance_date') ?? '';
 
-    if (!facility || !department || !attendance_date) {
-      return NextResponse.json({ error: 'facility, department, and attendance_date are required' }, { status: 400 });
+    if (!department || !attendance_date) {
+      return NextResponse.json({ error: 'department and attendance_date are required' }, { status: 400 });
     }
 
-    const south = isSouth(facility);
-    // h2 is the alias inside the subquery — h.* would cause "missing FROM-clause entry"
-    const facilityClause = south
-      ? `h2.facility IN ('WH1','WH2')`
-      : `h2.facility = '${facility.replace(/'/g, "''")}'`;
+    // h2 is the alias inside the subquery — h.* would cause "missing FROM-clause entry".
+    // Facility is resolved server-side from the session — never accepted from the client.
+    const facilityClause = facilitySqlIn('h2.facility', resolveFacilityScope(session));
 
     // $2::date casts the TIMESTAMPTZ parameter to DATE for correct DATE = DATE comparison
     const records = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`

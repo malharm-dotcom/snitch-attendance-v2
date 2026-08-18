@@ -13,6 +13,7 @@ interface SupervisorRow {
   departments: string[];
   pin: string;
   role: string;
+  allFacilities: boolean;
   isActive: boolean;
 }
 
@@ -59,6 +60,7 @@ interface EditForm {
   department: string;
   departments: string[];
   role: string;
+  allFacilities: boolean;
   isActive: boolean;
   newPassword: string;
 }
@@ -70,6 +72,7 @@ const emptyForm = (): EditForm => ({
   department: '',
   departments: [],
   role: 'supervisor',
+  allFacilities: false,
   isActive: true,
   newPassword: '',
 });
@@ -113,13 +116,14 @@ function DeptCheckboxes({ form, setter }: { form: EditForm; setter: (f: EditForm
   );
 }
 
-function FormPanel({ form, setter, title, onSave, onCancel, allowFacilityChange, saving, passwordVisible, onTogglePassword }: {
+function FormPanel({ form, setter, title, onSave, onCancel, allowFacilityChange, allowedFacilities, saving, passwordVisible, onTogglePassword }: {
   form: EditForm;
   setter: (f: EditForm) => void;
   title: string;
   onSave: () => void;
   onCancel: () => void;
   allowFacilityChange?: boolean;
+  allowedFacilities: string[];
   saving: boolean;
   passwordVisible: boolean;
   onTogglePassword: () => void;
@@ -156,7 +160,7 @@ function FormPanel({ form, setter, title, onSave, onCancel, allowFacilityChange,
           <Field label="Facility">
             {allowFacilityChange ? (
               <select value={form.facility} onChange={(e) => setter({ ...form, facility: e.target.value })} style={{ ...inputStyle, color: 'var(--text)' }}>
-                {(['WH1', 'WH2'] as string[]).map((f) => <option key={f} value={f}>{f}</option>)}
+                {allowedFacilities.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
             ) : (
               <div style={{ ...inputStyle, background: 'var(--surface2)', color: 'var(--text-2)', cursor: 'default' }}>{form.facility}</div>
@@ -171,6 +175,24 @@ function FormPanel({ form, setter, title, onSave, onCancel, allowFacilityChange,
 
         <Field label="Departments">
           <DeptCheckboxes form={form} setter={setter} />
+        </Field>
+
+        <Field label="Facility Access">
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13, lineHeight: 1.5 }}>
+            <input
+              type="checkbox"
+              checked={form.allFacilities}
+              onChange={(e) => setter({ ...form, allFacilities: e.target.checked })}
+              style={{ marginTop: 3 }}
+            />
+            <span>
+              All-facility access
+              <span style={{ display: 'block', fontSize: 11, color: 'var(--text-3)' }}>
+                Adds a facility selector to their header. Independent of role — they still
+                mark attendance for one facility at a time.
+              </span>
+            </span>
+          </label>
         </Field>
 
         <Field label={form.id ? 'New Password (leave blank to keep current)' : 'Password'}>
@@ -215,6 +237,7 @@ export default function SupervisorsTab() {
   const [currentUser, setCurrentUser] = useState('');
   const [currentFacility, setCurrentFacility] = useState('');
   const [isSouthAdmin, setIsSouthAdmin] = useState(false);
+  const [allowedFacilities, setAllowedFacilities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [saving, setSaving] = useState(false);
@@ -235,6 +258,7 @@ export default function SupervisorsTab() {
       setCurrentUser(data.currentUser ?? '');
       setCurrentFacility(data.currentFacility ?? '');
       setIsSouthAdmin(data.isSouthAdmin ?? false);
+      setAllowedFacilities(data.allowedFacilities ?? []);
     } catch {
       showToast('Failed to load supervisors', 'error');
     } finally {
@@ -253,6 +277,7 @@ export default function SupervisorsTab() {
       department: sup.department,
       departments: sup.departments,
       role: sup.role,
+      allFacilities: sup.allFacilities ?? false,
       isActive: sup.isActive,
       newPassword: '',
     });
@@ -273,6 +298,7 @@ export default function SupervisorsTab() {
           department: editForm.department || editForm.departments[0],
           departments: editForm.departments,
           role: editForm.role,
+          all_facilities: editForm.allFacilities,
           is_active: editForm.isActive,
           new_password: editForm.newPassword || undefined,
         }),
@@ -305,6 +331,7 @@ export default function SupervisorsTab() {
           department: addForm.departments[0],
           departments: addForm.departments,
           role: addForm.role,
+          all_facilities: addForm.allFacilities,
           password: addForm.newPassword,
         }),
       });
@@ -412,7 +439,17 @@ export default function SupervisorsTab() {
                     {s.employeeCode ?? <em>not set</em>}
                   </td>
                   <td style={{ padding: '10px 12px', fontFamily: 'var(--display)', fontWeight: 600 }}>{s.supervisorName}</td>
-                  <td style={{ padding: '10px 12px' }}>{s.facility}</td>
+                  <td style={{ padding: '10px 12px' }}>
+                    {s.facility}
+                    {s.allFacilities && (
+                      <span
+                        title="All-facility access"
+                        style={{ marginLeft: 6, background: 'var(--surface2)', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: 12, padding: '1px 7px', fontSize: 10, fontWeight: 600 }}
+                      >
+                        ALL
+                      </span>
+                    )}
+                  </td>
                   <td style={{ padding: '10px 12px', maxWidth: 200 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                       {s.departments.slice(0, 3).map((d) => (
@@ -477,6 +514,7 @@ export default function SupervisorsTab() {
           title={`Edit — ${editForm.supervisorName}`}
           onSave={saveEdit}
           onCancel={() => setEditForm(null)}
+          allowedFacilities={allowedFacilities}
           saving={saving}
           passwordVisible={passwordVisible}
           onTogglePassword={() => setPasswordVisible((v) => !v)}
@@ -491,6 +529,7 @@ export default function SupervisorsTab() {
           onSave={saveAdd}
           onCancel={() => setShowAdd(false)}
           allowFacilityChange={isSouthAdmin}
+          allowedFacilities={allowedFacilities}
           saving={saving}
           passwordVisible={passwordVisible}
           onTogglePassword={() => setPasswordVisible((v) => !v)}

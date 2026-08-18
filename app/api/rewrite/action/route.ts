@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { istNow } from '@/lib/ist';
 import { getSession } from '@/lib/auth';
+import { resolveAllowedFacilities } from '@/lib/facilityScope';
 
 interface ActionBody {
   request_id: number;
@@ -33,12 +34,23 @@ export async function POST(request: NextRequest) {
 
     const ids = request_ids ?? [request_id];
 
-    // Block self-approval: reject any request where the requester is the current user
-    const selfRequests = await prisma.attendanceRewriteRequest.findMany({
-      where: { id: { in: ids }, supervisorName: session.supervisorName },
-      select: { id: true },
+    // Facility scope: an approver may only action requests inside their own allowed
+    // facilities. Without this a NORTH manager could approve a WH1 request by guessing
+    // its id — the ids are sequential and were never scope-checked.
+    const targets = await prisma.attendanceRewriteRequest.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, facility: true, supervisorName: true },
     });
-    if (selfRequests.length > 0) {
+    if (targets.length !== ids.length) {
+      return NextResponse.json({ error: 'One or more requests were not found' }, { status: 404 });
+    }
+    const allowedFacilities = resolveAllowedFacilities(session);
+    if (targets.some((t) => !allowedFacilities.includes(t.facility))) {
+      return NextResponse.json({ error: 'Cannot action rewrite requests from another facility' }, { status: 403 });
+    }
+
+    // Block self-approval: reject any request where the requester is the current user
+    if (targets.some((t) => t.supervisorName === session.supervisorName)) {
       return NextResponse.json({ error: 'You cannot approve or reject your own rewrite request' }, { status: 403 });
     }
 

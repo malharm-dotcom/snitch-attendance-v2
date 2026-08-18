@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilitySqlList } from '@/lib/facilityScope';
 import { parseISTDate, formatAttendanceDate } from '@/lib/ist';
 import { classifyStatus, normalizeFacility, normalizeDepartment, SQL_NORM_FACILITY } from '@/lib/reporting';
 
@@ -63,10 +64,9 @@ export async function GET(request: NextRequest) {
     const deptExprEmp = byDept ? `TRIM(e.department)` : `''::text`;
 
     // Facility scope derived server-side from the session, never from params.
-    const south = isSouth(session.facility);
-    const scopeFacilities = south ? ['WH1', 'WH2'] : [normalizeFacility(session.facility)];
-    const scopeLabel = south ? 'South (WH1 + WH2)' : scopeFacilities[0];
-    const facList = scopeFacilities.map((f) => `'${f.replace(/'/g, "''")}'`).join(',');
+    const scope = resolveFacilityScope(session);
+    const scopeLabel = scope.label;
+    const facList = facilitySqlList(scope);
     const normEmpFac = SQL_NORM_FACILITY('e.facility');
 
     // Per-date roster eligibility predicate — reused by both queries so that the

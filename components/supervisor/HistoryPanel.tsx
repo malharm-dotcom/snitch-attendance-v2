@@ -8,11 +8,10 @@ import { istDateString } from '@/lib/ist';
 import type { HistoryRecord } from '@/lib/types';
 
 interface HistoryPanelProps {
-  facility: string;
   departments: string[];
 }
 
-export default function HistoryPanel({ facility, departments }: HistoryPanelProps) {
+export default function HistoryPanel({ departments }: HistoryPanelProps) {
   const today = istDateString();
   const sevenAgo = istDateString(new Date(Date.now() - 6 * 86400000));
 
@@ -30,9 +29,10 @@ export default function HistoryPanel({ facility, departments }: HistoryPanelProp
     setRecords([]);
     try {
       const endpoint = isMultiDay ? '/api/attendance/history-range' : '/api/attendance/history';
+      // No facility param — the server scopes from the session.
       const params = isMultiDay
-        ? `facility=${facility}&department=${departments[0]}&from_date=${fromDate}&to_date=${toDate}`
-        : `facility=${facility}&department=${departments[0]}&attendance_date=${fromDate}`;
+        ? `department=${departments[0]}&from_date=${fromDate}&to_date=${toDate}`
+        : `department=${departments[0]}&attendance_date=${fromDate}`;
 
       const res = await fetch(`${endpoint}?${params}`);
       const data = await res.json();

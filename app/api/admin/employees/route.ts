@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveAllowedFacilities, facilityPrismaFilter, resolveFacilityScope } from '@/lib/facilityScope';
 import { parseISTDate, formatAttendanceDate } from '@/lib/ist';
 
 async function requireAdmin() {
@@ -14,9 +15,8 @@ export async function GET() {
     const session = await requireAdmin();
     if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const facilityFilter = isSouth(session.facility)
-      ? { in: ['WH1', 'WH2'] }
-      : { equals: session.facility };
+    const scope = resolveFacilityScope(session);
+    const facilityFilter = facilityPrismaFilter(scope);
 
     const employees = await prisma.employee.findMany({
       where: { facility: facilityFilter },
@@ -44,8 +44,9 @@ export async function GET() {
         joiningDate: e.joiningDate ? formatAttendanceDate(e.joiningDate) : null,
         exitDate: e.exitDate ? formatAttendanceDate(e.exitDate) : null,
       })),
-      currentFacility: session.facility,
-      isSouthAdmin: isSouth(session.facility),
+      currentFacility: scope.active ?? session.facility,
+      isSouthAdmin: scope.allowed.length > 1,
+      allowedFacilities: scope.allowed,
     });
   } catch (error) {
     console.error('GET /api/admin/employees error:', error);
@@ -76,9 +77,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'joining_date is required' }, { status: 400 });
 
     // Scope check
-    const inScope = isSouth(session.facility)
-      ? ['WH1', 'WH2'].includes(facility)
-      : facility === session.facility;
+    const inScope = resolveAllowedFacilities(session).includes(facility);
     if (!inScope)
       return NextResponse.json({ error: 'facility is outside your allowed scope' }, { status: 403 });
 
@@ -129,9 +128,8 @@ export async function PUT(request: NextRequest) {
     });
     if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const targetInScope = isSouth(session.facility)
-      ? isSouth(target.facility)
-      : target.facility === session.facility;
+    const allowedFacilities = resolveAllowedFacilities(session);
+    const targetInScope = allowedFacilities.includes(target.facility);
     if (!targetInScope)
       return NextResponse.json({ error: 'Cannot edit employees from another facility' }, { status: 403 });
 
@@ -139,10 +137,7 @@ export async function PUT(request: NextRequest) {
 
     if (employee_name !== undefined) updateData.employeeName = employee_name;
     if (facility !== undefined) {
-      const newFacilityInScope = isSouth(session.facility)
-        ? ['WH1', 'WH2'].includes(facility)
-        : facility === session.facility;
-      if (newFacilityInScope) updateData.facility = facility;
+      if (allowedFacilities.includes(facility)) updateData.facility = facility;
     }
     if (department !== undefined) updateData.department = department;
     if (designation !== undefined) updateData.designation = designation || null;

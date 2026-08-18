@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { parseISTDate } from '@/lib/ist';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilityPrismaFilter } from '@/lib/facilityScope';
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = request.nextUrl;
     const attendance_date = searchParams.get('attendance_date') ?? '';
 
@@ -15,19 +20,13 @@ export async function GET(request: NextRequest) {
 
     const parsedDate = parseISTDate(attendance_date);
 
-    const facility = session.isLoggedIn ? session.facility : null;
-    const south = facility ? isSouth(facility) : false;
-
-    const facilityFilter = facility
-      ? south
-        ? { in: ['WH1', 'WH2'] }
-        : { equals: facility }
-      : undefined;
+    // Always an explicit whitelist — there is no unscoped path any more.
+    const facilityFilter = facilityPrismaFilter(resolveFacilityScope(session));
 
     const headers = await prisma.attendanceHeader.findMany({
       where: {
         attendanceDate: parsedDate,
-        ...(facilityFilter ? { facility: facilityFilter } : {}),
+        facility: facilityFilter,
       },
       orderBy: [{ facility: 'asc' }, { department: 'asc' }, { markedAt: 'desc' }],
     });
@@ -53,7 +52,7 @@ export async function GET(request: NextRequest) {
       by: ['department'],
       where: {
         isActive: true,
-        ...(facilityFilter ? { facility: facilityFilter } : {}),
+        facility: facilityFilter,
       },
       _count: { _all: true },
     });

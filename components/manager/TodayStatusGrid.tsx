@@ -63,7 +63,8 @@ export default function TodayStatusGrid({ facility }: TodayStatusGridProps) {
     const sub = submissions.find((s) => s.department === dept);
     if (!sub) return;
     try {
-      const res = await fetch(`/api/attendance/history?facility=${facility}&department=${dept}&attendance_date=${date}`);
+      // No facility param — the server scopes from the session.
+      const res = await fetch(`/api/attendance/history?department=${dept}&attendance_date=${date}`);
       const data = await res.json();
       setDetailRecords(data.records ?? []);
     } catch {

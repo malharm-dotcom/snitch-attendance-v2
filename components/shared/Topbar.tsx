@@ -3,15 +3,46 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './Toast';
+import { FACILITIES } from '@/lib/constants';
+import { ALL_FACILITIES, scopeLabel } from '@/lib/reportExport';
 
 interface TopbarProps {
   name: string;
   role: string;
+  /** The resolved facility scope (a concrete facility, or ALL_FACILITIES). */
+  facility?: string;
+  /** True only for users carrying the server-side all_facilities capability. */
+  allFacilities?: boolean;
+  /** Offer the cross-facility aggregate option (reports-capable roles only). */
+  allowAggregate?: boolean;
 }
 
-export default function Topbar({ name, role }: TopbarProps) {
+export default function Topbar({ name, role, facility, allFacilities, allowAggregate }: TopbarProps) {
   const router = useRouter();
   const { showToast } = useToast();
+  const [switching, setSwitching] = useState(false);
+
+  async function handleFacilityChange(next: string) {
+    if (next === facility) return;
+    setSwitching(true);
+    try {
+      // Sends an INTENT only. The server validates the capability and the whitelist,
+      // stores the selection in the session, and every view re-scopes from there.
+      const res = await fetch('/api/session/facility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ facility: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(data.error ?? 'Failed to switch facility', 'error'); return; }
+      showToast(`Switched to ${scopeLabel(next)}`, 'success');
+      router.refresh();
+    } catch {
+      showToast('Network error', 'error');
+    } finally {
+      setSwitching(false);
+    }
+  }
   const [showPin, setShowPin] = useState(false);
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -115,6 +146,29 @@ export default function Topbar({ name, role }: TopbarProps) {
 
         {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {allFacilities && (
+            <select
+              value={facility ?? ''}
+              disabled={switching}
+              onChange={(e) => handleFacilityChange(e.target.value)}
+              title="Switch facility — applies to every view"
+              style={{
+                border: '1.5px solid var(--border)',
+                borderRadius: 6,
+                fontFamily: 'var(--mono)',
+                fontSize: 11,
+                padding: '3px 8px',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                cursor: switching ? 'wait' : 'pointer',
+              }}
+            >
+              {FACILITIES.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+              {allowAggregate && <option value={ALL_FACILITIES}>All facilities</option>}
+            </select>
+          )}
           <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-2)' }}>
             {name}
           </span>

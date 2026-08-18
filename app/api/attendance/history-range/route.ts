@@ -1,25 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { parseISTDate, formatAttendanceDate } from '@/lib/ist';
-import { isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = request.nextUrl;
-    const facility = searchParams.get('facility') ?? '';
     const department = searchParams.get('department') ?? '';
     const from_date = searchParams.get('from_date') ?? '';
     const to_date = searchParams.get('to_date') ?? '';
 
-    if (!facility || !department || !from_date || !to_date) {
-      return NextResponse.json({ error: 'facility, department, from_date, and to_date are required' }, { status: 400 });
+    if (!department || !from_date || !to_date) {
+      return NextResponse.json({ error: 'department, from_date, and to_date are required' }, { status: 400 });
     }
 
-    const south = isSouth(facility);
-    // h2 is the alias used inside the subquery
-    const facilityClause = south
-      ? `h2.facility IN ('WH1','WH2')`
-      : `h2.facility = '${facility.replace(/'/g, "''")}'`;
+    // h2 is the alias used inside the subquery.
+    // Facility is resolved server-side from the session — never accepted from the client.
+    const facilityClause = facilitySqlIn('h2.facility', resolveFacilityScope(session));
 
     const parsedFrom = parseISTDate(from_date);
     const parsedTo = parseISTDate(to_date);

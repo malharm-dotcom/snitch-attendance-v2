@@ -8,6 +8,18 @@ export interface SessionData {
   departments: string[];
   role: 'supervisor' | 'manager' | 'admin';
   isLoggedIn: boolean;
+  /**
+   * Per-user capability (supervisors.all_facilities) — orthogonal to role. When true the
+   * user may switch which facility their session is scoped to. Optional so cookies issued
+   * before this field existed still deserialize (undefined => not all-access => unchanged).
+   */
+  allFacilities?: boolean;
+  /**
+   * The facility an all-access user currently has selected, or ALL_FACILITIES. Meaningless
+   * (and ignored) when allFacilities is false. Resolved via lib/facilityScope.ts — never
+   * read directly by a route.
+   */
+  selectedFacility?: string;
 }
 
 export async function getSession(): Promise<IronSession<SessionData>> {
@@ -30,6 +42,6 @@ export async function getSession(): Promise<IronSession<SessionData>> {
   return session;
 }
 
-export function isSouth(facility: string): boolean {
-  return facility === 'WH1' || facility === 'WH2';
-}
+// The South rule now lives with the rest of the facility-scoping logic; re-exported here
+// so 'isSouth' keeps its historical import path.
+export { isSouth } from './facilityScope';

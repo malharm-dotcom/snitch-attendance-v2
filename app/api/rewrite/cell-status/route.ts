@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilityPrismaFilter } from '@/lib/facilityScope';
 import { parseISTDate, formatAttendanceDate } from '@/lib/ist';
 
 /**
@@ -44,9 +45,7 @@ export async function GET(request: NextRequest) {
     const to = new Date(selected.getTime() - 86400000);
     const from = new Date(selected.getTime() - 7 * 86400000);
 
-    const facilityFilter = isSouth(session.facility)
-      ? { in: ['WH1', 'WH2'] }
-      : { equals: session.facility };
+    const facilityFilter = facilityPrismaFilter(resolveFacilityScope(session));
 
     const reqs = await prisma.attendanceRewriteRequest.findMany({
       where: {

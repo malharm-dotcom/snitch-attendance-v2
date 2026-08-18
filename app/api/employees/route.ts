@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilityPrismaFilter } from '@/lib/facilityScope';
 import { parseISTDate } from '@/lib/ist';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = request.nextUrl;
-    const facility = searchParams.get('facility') ?? '';
     const department = searchParams.get('department') ?? '';
     const departments = searchParams.get('departments') ?? '';
     const shift = searchParams.get('shift') ?? '';
@@ -18,13 +23,12 @@ export async function GET(request: NextRequest) {
         ? [department]
         : [];
 
-    if (!facility || deptList.length === 0) {
-      return NextResponse.json({ error: 'facility and department(s) are required' }, { status: 400 });
+    if (deptList.length === 0) {
+      return NextResponse.json({ error: 'department(s) are required' }, { status: 400 });
     }
 
-    const facilityFilter = isSouth(facility)
-      ? { in: ['WH1', 'WH2'] }
-      : { equals: facility };
+    // Facility is resolved server-side from the session — never accepted from the client.
+    const facilityFilter = facilityPrismaFilter(resolveFacilityScope(session));
 
     const employees = await prisma.employee.findMany({
       where: {

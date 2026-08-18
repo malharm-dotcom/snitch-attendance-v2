@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSession, isSouth } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { resolveFacilityScope, facilityPrismaFilter } from '@/lib/facilityScope';
 import { formatAttendanceDate } from '@/lib/ist';
 
 export async function GET() {
@@ -10,10 +11,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const south = isSouth(session.facility);
-    const facilityFilter = south
-      ? { in: ['WH1', 'WH2'] }
-      : { equals: session.facility };
+    const scope = resolveFacilityScope(session);
+    const facilityFilter = facilityPrismaFilter(scope);
 
     const employees = await prisma.employee.findMany({
       where: {
@@ -29,7 +28,11 @@ export async function GET() {
         joiningDate: e.joiningDate ? formatAttendanceDate(e.joiningDate) : null,
         exitDate: e.exitDate ? formatAttendanceDate(e.exitDate) : null,
       })),
-      scope: south ? 'south' : 'north',
+      scope: scope.isAllSelected
+        ? 'all'
+        : scope.allowed.length > 1
+          ? 'south'
+          : scope.allowed[0].toLowerCase(),
     });
   } catch (error) {
     console.error('GET /api/reports/employees error:', error);
