@@ -43,7 +43,7 @@ export default function HistoryMatrix({
 
   const { employees, dates, matrix } = useMemo(() => {
     const dateSet = new Set<string>();
-    const empMap = new Map<string, { code: string; name: string; joiningDate: string; exitDate: string; department: string; reportingManager: string }>();
+    const empMap = new Map<string, { code: string; name: string; joiningDate: string; exitDate: string; department: string; reportingManager: string; shift: string }>();
 
     for (const r of records) {
       if (!r.ATTENDANCE_DATE) continue;
@@ -58,6 +58,7 @@ export default function HistoryMatrix({
           exitDate: r.EXIT_DATE ?? '',
           department: r.DEPARTMENT ?? '',
           reportingManager: r.REPORTING_MANAGER ?? '',
+          shift: r.SHIFT ?? '',
         });
       }
     }
@@ -119,7 +120,7 @@ export default function HistoryMatrix({
     const payrollHeaders = showPayrollDates ? ['Joining Date', 'Exit Date'] : [];
     const summaryHeaders = showSummary ? ['Present', 'LOP', 'Total Days', 'Absent'] : [];
     const headers = [
-      'Employee Code', 'Employee Name', 'Department', 'Reporting Manager',
+      'Employee Code', 'Employee Name', 'Department', 'Reporting Manager', 'Shift',
       ...payrollHeaders, ...dates, ...summaryHeaders,
     ];
 
@@ -129,7 +130,7 @@ export default function HistoryMatrix({
     const rows = filteredEmployees.map((e) => {
       const payrollCols = showPayrollDates ? [e.joiningDate, e.exitDate] : [];
       const dateCols = dates.map((d) => cell(matrix.get(e.code)?.get(d)?.ATTENDANCE_STATUS));
-      const lead = [e.code, e.name, e.department, e.reportingManager];
+      const lead = [e.code, e.name, e.department, e.reportingManager, e.shift];
       if (!showSummary) return [...lead, ...payrollCols, ...dateCols];
       const { present, lop, absent } = getSummary(e.code);
       return [...lead, ...payrollCols, ...dateCols, present, lop, totalDays, absent];

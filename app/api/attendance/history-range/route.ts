@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
         h.facility           AS "FACILITY",
         ${SQL_EFFECTIVE_DEPT('e', 'h')} AS "DEPARTMENT",
         COALESCE(e.reporting_manager, '') AS "REPORTING_MANAGER",
+        -- Roster shift, like department: one row per employee here, so the per-day
+        -- header shift has nowhere to go.
+        COALESCE(e.shift, '') AS "SHIFT",
         d.attendance_date    AS "ATTENDANCE_DATE"
       FROM (
         SELECT
