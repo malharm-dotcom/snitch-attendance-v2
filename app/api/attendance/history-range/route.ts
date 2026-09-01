@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { parseISTDate, formatAttendanceDate } from '@/lib/ist';
 import { getSession } from '@/lib/auth';
 import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
+import { SQL_EFFECTIVE_DEPT, SQL_DEDUP_PARTITION } from '@/lib/reporting';
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,8 +28,10 @@ export async function GET(request: NextRequest) {
     const parsedFrom = parseISTDate(from_date);
     const parsedTo = parseISTDate(to_date);
 
+    // The department filter follows the EMPLOYEE (e2.department), not the header
+    // snapshot — otherwise a department move hides every past day of that employee.
     const allDepts = department === '__all__';
-    const deptClause = allDepts ? '' : `AND h2.department = $1`;
+    const deptClause = allDepts ? '' : `AND ${SQL_EFFECTIVE_DEPT('e2', 'h2')} = $1`;
     const fromParam = allDepts ? '$1::date' : '$2::date';
     const toParam   = allDepts ? '$2::date' : '$3::date';
     const queryParams: unknown[] = allDepts ? [parsedFrom, parsedTo] : [department, parsedFrom, parsedTo];
@@ -44,18 +47,20 @@ export async function GET(request: NextRequest) {
         h.marked_by          AS "MARKED_BY",
         h.marked_at          AS "MARKED_AT",
         h.facility           AS "FACILITY",
-        h.department         AS "DEPARTMENT",
+        ${SQL_EFFECTIVE_DEPT('e', 'h')} AS "DEPARTMENT",
+        COALESCE(e.reporting_manager, '') AS "REPORTING_MANAGER",
         d.attendance_date    AS "ATTENDANCE_DATE"
       FROM (
         SELECT
           d2.*,
           ROW_NUMBER() OVER (
-            PARTITION BY d2.employee_code, d2.attendance_date, h2.facility, h2.department, COALESCE(h2.shift,'Day')
+            ${SQL_DEDUP_PARTITION}
             ORDER BY h2.id DESC, d2.id DESC
           ) AS rn,
           h2.id AS hid
         FROM attendance_detail d2
         JOIN attendance_header h2 ON d2.attendance_header_id = h2.id
+        LEFT JOIN employees e2 ON e2.employee_code = d2.employee_code
         WHERE ${facilityClause}
           ${deptClause}
           AND d2.attendance_date BETWEEN ${fromParam} AND ${toParam}

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
 import { parseISTDate, formatAttendanceDate } from '@/lib/ist';
+import { SQL_DEDUP_PARTITION } from '@/lib/reporting';
 
 /**
  * Read-only 7-day history strip for the Mark Attendance screen.
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
           d2.employee_code,
           d2.attendance_date,
           ROW_NUMBER() OVER (
-            PARTITION BY d2.employee_code, d2.attendance_date, h2.facility, h2.department, COALESCE(h2.shift,'Day')
+            ${SQL_DEDUP_PARTITION}
             ORDER BY h2.id DESC, d2.id DESC
           ) AS rn
         FROM attendance_detail d2

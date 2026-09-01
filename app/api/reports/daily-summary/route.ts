@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
 import { parseISTDate } from '@/lib/ist';
+import { SQL_EFFECTIVE_DEPT, SQL_DEDUP_PARTITION } from '@/lib/reporting';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     // $1::date casts the TIMESTAMPTZ parameter to DATE for correct DATE = DATE comparison
     const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
       SELECT
-        h.department,
+        ${SQL_EFFECTIVE_DEPT('e', 'h')} AS department,
         h.facility,
         d.attendance_status,
         e.roll_type,
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
         SELECT
           d2.*,
           ROW_NUMBER() OVER (
-            PARTITION BY d2.employee_code, d2.attendance_date, h2.facility, h2.department, COALESCE(h2.shift,'Day')
+            ${SQL_DEDUP_PARTITION}
             ORDER BY h2.id DESC, d2.id DESC
           ) AS rn,
           h2.id AS hid
@@ -53,8 +54,8 @@ export async function GET(request: NextRequest) {
       JOIN attendance_header h ON h.id = sub.hid
       LEFT JOIN employees e ON e.employee_code = d.employee_code
       WHERE sub.rn = 1
-      GROUP BY h.department, h.facility, d.attendance_status, e.roll_type, e.gender
-      ORDER BY h.facility, h.department
+      GROUP BY 1, h.facility, d.attendance_status, e.roll_type, e.gender
+      ORDER BY h.facility, 1
     `, parseISTDate(date));
 
     return NextResponse.json({ scope: scope.label, rows });

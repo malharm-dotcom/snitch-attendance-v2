@@ -107,3 +107,24 @@ export function normalizeFacility(facility: string): string {
 
 /** SQL expression for the same facility normalization (for raw queries). */
 export const SQL_NORM_FACILITY = (col: string) => `TRIM(${col})`;
+
+/**
+ * Department a marked day is REPORTED under: the employee's CURRENT roster
+ * department, falling back to the header's snapshot when the employee row is gone.
+ *
+ * Attendance follows the employee across a department move (signed off 2026-09-01).
+ * Before this, every read filtered on attendance_header.department — the department
+ * as it was on marking day — so moving someone to another department made their whole
+ * history disappear from the department they now belong to. The Attendance Rate report
+ * already anchored to the roster; this is the same rule applied everywhere else.
+ */
+export const SQL_EFFECTIVE_DEPT = (empAlias: string, headerAlias: string) =>
+  `COALESCE(NULLIF(TRIM(${empAlias}.department), ''), ${headerAlias}.department)`;
+
+/**
+ * One status per employee per day per shift — the dedup key deliberately excludes
+ * department AND facility. Both used to be in the key, so an employee marked under
+ * their old department and their new one on the same day produced two winning rows.
+ */
+export const SQL_DEDUP_PARTITION =
+  `PARTITION BY d2.employee_code, d2.attendance_date, COALESCE(h2.shift,'Day')`;

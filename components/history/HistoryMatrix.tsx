@@ -43,7 +43,7 @@ export default function HistoryMatrix({
 
   const { employees, dates, matrix } = useMemo(() => {
     const dateSet = new Set<string>();
-    const empMap = new Map<string, { code: string; name: string; joiningDate: string; exitDate: string }>();
+    const empMap = new Map<string, { code: string; name: string; joiningDate: string; exitDate: string; department: string; reportingManager: string }>();
 
     for (const r of records) {
       if (!r.ATTENDANCE_DATE) continue;
@@ -56,6 +56,8 @@ export default function HistoryMatrix({
           name: r.EMPLOYEE_NAME,
           joiningDate: r.JOINING_DATE ?? '',
           exitDate: r.EXIT_DATE ?? '',
+          department: r.DEPARTMENT ?? '',
+          reportingManager: r.REPORTING_MANAGER ?? '',
         });
       }
     }
@@ -108,23 +110,38 @@ export default function HistoryMatrix({
     });
   }, [employees, searchQuery, statusFilter, dates, matrix]);
 
-  function downloadCSV() {
+  /** Short code shown in the matrix chips (P / AB / UL / WO …), falling back to the full label. */
+  function statusCode(status: string): string {
+    return MATRIX_CHIP_LABELS[status]?.[1] ?? status;
+  }
+
+  function downloadCSV(mode: 'codes' | 'labels') {
     const payrollHeaders = showPayrollDates ? ['Joining Date', 'Exit Date'] : [];
     const summaryHeaders = showSummary ? ['Present', 'LOP', 'Total Days', 'Absent'] : [];
-    const headers = ['Employee Code', 'Employee Name', ...payrollHeaders, ...dates, ...summaryHeaders];
+    const headers = [
+      'Employee Code', 'Employee Name', 'Department', 'Reporting Manager',
+      ...payrollHeaders, ...dates, ...summaryHeaders,
+    ];
+
+    const cell = (status: string | undefined) =>
+      !status ? '' : mode === 'codes' ? statusCode(status) : status;
 
     const rows = filteredEmployees.map((e) => {
       const payrollCols = showPayrollDates ? [e.joiningDate, e.exitDate] : [];
-      const dateCols = dates.map((d) => matrix.get(e.code)?.get(d)?.ATTENDANCE_STATUS ?? '');
-      if (!showSummary) return [e.code, e.name, ...payrollCols, ...dateCols];
+      const dateCols = dates.map((d) => cell(matrix.get(e.code)?.get(d)?.ATTENDANCE_STATUS));
+      const lead = [e.code, e.name, e.department, e.reportingManager];
+      if (!showSummary) return [...lead, ...payrollCols, ...dateCols];
       const { present, lop, absent } = getSummary(e.code);
-      return [e.code, e.name, ...payrollCols, ...dateCols, present, lop, totalDays, absent];
+      return [...lead, ...payrollCols, ...dateCols, present, lop, totalDays, absent];
     });
 
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'attendance_matrix.csv'; a.click();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance_matrix_${mode}.csv`;
+    a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -147,12 +164,20 @@ export default function HistoryMatrix({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 10 }}>
         <button
-          onClick={downloadCSV}
+          onClick={() => downloadCSV('codes')}
+          title="P, AB, UL, WO — same codes as the chips above"
           style={{ padding: '7px 14px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer', background: 'var(--surface)' }}
         >
-          ↓ CSV
+          ↓ CSV (codes)
+        </button>
+        <button
+          onClick={() => downloadCSV('labels')}
+          title="Present, Absconding, Unpaid Leave — full status names"
+          style={{ padding: '7px 14px', border: '1.5px solid var(--border)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer', background: 'var(--surface)' }}
+        >
+          ↓ CSV (full)
         </button>
       </div>
 

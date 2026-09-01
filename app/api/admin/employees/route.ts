@@ -109,6 +109,55 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Rename an employee_code (the real code arrives 4-5 days after joining, so the
+ * employee is created under a TMP- placeholder and renamed later).
+ *
+ * attendance_detail.employee_code is a plain VARCHAR — there is NO database foreign
+ * key to employees — so renaming only the employees row silently orphans every
+ * attendance day already marked. Both tables (plus rewrite requests) move together
+ * in one transaction.
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await requireAdmin();
+    if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    const { employee_code, new_employee_code } = await request.json();
+    const oldCode = String(employee_code ?? '').trim();
+    const newCode = String(new_employee_code ?? '').trim();
+
+    if (!oldCode || !newCode) return NextResponse.json({ error: 'employee_code and new_employee_code are required' }, { status: 400 });
+    if (oldCode === newCode) return NextResponse.json({ success: true, moved: 0 });
+
+    const target = await prisma.employee.findUnique({ where: { employeeCode: oldCode }, select: { facility: true } });
+    if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!resolveAllowedFacilities(session).includes(target.facility))
+      return NextResponse.json({ error: 'Cannot edit employees from another facility' }, { status: 403 });
+
+    const clash = await prisma.employee.findUnique({ where: { employeeCode: newCode } });
+    if (clash) return NextResponse.json({ error: `Employee code "${newCode}" already exists` }, { status: 409 });
+
+    const moved = await prisma.$transaction(async (tx) => {
+      await tx.employee.update({ where: { employeeCode: oldCode }, data: { employeeCode: newCode } });
+      const details = await tx.attendanceDetail.updateMany({
+        where: { employeeCode: oldCode },
+        data: { employeeCode: newCode },
+      });
+      await tx.attendanceRewriteRequest.updateMany({
+        where: { employeeCode: oldCode },
+        data: { employeeCode: newCode },
+      });
+      return details.count;
+    });
+
+    return NextResponse.json({ success: true, moved });
+  } catch (error) {
+    console.error('PATCH /api/admin/employees error:', error);
+    return NextResponse.json({ error: 'Failed to change employee code' }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest) {
   try {
     const session = await requireAdmin();

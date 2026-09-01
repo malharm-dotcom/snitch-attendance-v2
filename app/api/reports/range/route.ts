@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
 import { parseISTDate, formatAttendanceDate, istTimestamp } from '@/lib/ist';
+import { SQL_EFFECTIVE_DEPT, SQL_DEDUP_PARTITION } from '@/lib/reporting';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,8 +27,10 @@ export async function GET(request: NextRequest) {
     const scope = resolveFacilityScope(session);
     const facilityClause = facilitySqlIn('h2.facility', scope);
 
+    // Department follows the EMPLOYEE's current roster department, not the header
+    // snapshot — a department move must not hide days marked under the old one.
     const deptClause = department
-      ? `AND h2.department = '${department.replace(/'/g, "''")}'`
+      ? `AND ${SQL_EFFECTIVE_DEPT('e2', 'h2')} = '${department.replace(/'/g, "''")}'`
       : '';
 
     const shiftClause = shift
@@ -45,19 +48,21 @@ export async function GET(request: NextRequest) {
         h.marked_by          AS "MARKED_BY",
         h.marked_at          AS "MARKED_AT",
         h.facility           AS "FACILITY",
-        h.department         AS "DEPARTMENT",
+        ${SQL_EFFECTIVE_DEPT('e', 'h')} AS "DEPARTMENT",
+        COALESCE(e.reporting_manager, '') AS "REPORTING_MANAGER",
         h.shift              AS "SHIFT",
         d.attendance_date    AS "ATTENDANCE_DATE"
       FROM (
         SELECT
           d2.*,
           ROW_NUMBER() OVER (
-            PARTITION BY d2.employee_code, d2.attendance_date, h2.facility, h2.department, COALESCE(h2.shift,'Day')
+            ${SQL_DEDUP_PARTITION}
             ORDER BY h2.id DESC, d2.id DESC
           ) AS rn,
           h2.id AS hid
         FROM attendance_detail d2
         JOIN attendance_header h2 ON d2.attendance_header_id = h2.id
+        LEFT JOIN employees e2 ON e2.employee_code = d2.employee_code
         WHERE ${facilityClause} ${deptClause} ${shiftClause}
           AND d2.attendance_date BETWEEN $1::date AND $2::date
       ) sub
@@ -65,7 +70,7 @@ export async function GET(request: NextRequest) {
       JOIN attendance_header h ON h.id = sub.hid
       LEFT JOIN employees e ON e.employee_code = d.employee_code
       WHERE sub.rn = 1
-      ORDER BY d.attendance_date, h.facility, h.department, d.employee_name
+      ORDER BY d.attendance_date, h.facility, "DEPARTMENT", d.employee_name
     `, parseISTDate(from_date), parseISTDate(to_date));
 
     const formatted = rows.map((r) => ({

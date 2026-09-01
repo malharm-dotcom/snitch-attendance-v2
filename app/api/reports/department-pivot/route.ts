@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { resolveFacilityScope, facilitySqlIn } from '@/lib/facilityScope';
 import { parseISTDate } from '@/lib/ist';
+import { SQL_EFFECTIVE_DEPT, SQL_DEDUP_PARTITION } from '@/lib/reporting';
 import { ATTENDANCE_STATUSES } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
@@ -32,14 +33,14 @@ export async function GET(request: NextRequest) {
 
     const raw = await prisma.$queryRawUnsafe<{ department: string; attendance_status: string; cnt: number }[]>(`
       SELECT
-        h.department          AS department,
+        ${SQL_EFFECTIVE_DEPT('e', 'h')} AS department,
         d.attendance_status   AS attendance_status,
         COUNT(*)::int         AS cnt
       FROM (
         SELECT
           d2.*,
           ROW_NUMBER() OVER (
-            PARTITION BY d2.employee_code, d2.attendance_date, h2.facility, h2.department, COALESCE(h2.shift,'Day')
+            ${SQL_DEDUP_PARTITION}
             ORDER BY h2.id DESC, d2.id DESC
           ) AS rn,
           h2.id AS hid
@@ -50,9 +51,10 @@ export async function GET(request: NextRequest) {
       ) sub
       JOIN attendance_detail d ON d.id = sub.id
       JOIN attendance_header h ON h.id = sub.hid
+      LEFT JOIN employees e ON e.employee_code = d.employee_code
       WHERE sub.rn = 1
-      GROUP BY h.department, d.attendance_status
-      ORDER BY h.department, d.attendance_status
+      GROUP BY 1, d.attendance_status
+      ORDER BY 1, d.attendance_status
     `, parseISTDate(from), parseISTDate(to));
 
     const deptMap = new Map<string, Record<string, number>>();

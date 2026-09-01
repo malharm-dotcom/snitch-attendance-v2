@@ -56,10 +56,11 @@ export async function GET(request: NextRequest) {
     const statusMap = new Map<string, { status: string; remarks: string | null }>();
     if (date) {
       const parsedDate = parseISTDate(date);
+      // NOT filtered by department: a status already marked for this employee on this
+      // date counts even if it was marked under the department they have since left.
       const headers = await prisma.attendanceHeader.findMany({
         where: {
           facility: facilityFilter,
-          department: deptList.length === 1 ? deptList[0] : { in: deptList },
           attendanceDate: parsedDate,
           ...(shift ? { shift } : {}),
         },

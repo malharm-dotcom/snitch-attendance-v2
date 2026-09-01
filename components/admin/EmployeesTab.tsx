@@ -35,6 +35,7 @@ interface EditForm {
   reportingManager: string;
   exitDate: string;       // YYYY-MM-DD or '' — required when isActive=false
   joiningDate: string | null;  // read-only, used for exit_date >= joining_date validation
+  newEmployeeCode: string;     // editable code — renames employees + attendance_detail together
 }
 
 interface AddForm {
@@ -59,6 +60,16 @@ const REQUIRED_HEADERS = [
 
 // Export includes payroll dates; template does not (bulk-upload doesn't accept them)
 const EXPORT_HEADERS = [...REQUIRED_HEADERS, 'joining_date', 'exit_date'];
+
+/**
+ * Placeholder code for a joiner whose real employee code has not been issued yet
+ * (it arrives 4-5 days later). TMP- prefix keeps them findable and keeps
+ * rollTypeFromCode() honest — only SAPL* counts as On-Roll.
+ */
+function tempCode(name: string): string {
+  const slug = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
+  return `TMP-${slug || 'NEW'}-${istDateString().replace(/-/g, '').slice(4)}`;
+}
 
 function formatDDMMYYYY(s: string | null | undefined): string {
   if (!s) return '';
@@ -324,6 +335,7 @@ export default function EmployeesTab() {
       reportingManager: emp.reportingManager ?? '',
       exitDate: emp.exitDate ?? '',
       joiningDate: emp.joiningDate ?? null,
+      newEmployeeCode: emp.employeeCode,
     });
   }
 
@@ -344,13 +356,29 @@ export default function EmployeesTab() {
       }
     }
 
+    const renamedCode = editForm.newEmployeeCode.trim();
+    if (!renamedCode) { showToast('Employee code cannot be empty', 'error'); return; }
+
     setSaving(true);
     try {
+      // Code change first — it moves attendance_detail rows too, so the PUT below
+      // must address the employee by the NEW code.
+      if (renamedCode !== editForm.employeeCode) {
+        const rename = await fetch('/api/admin/employees', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_code: editForm.employeeCode, new_employee_code: renamedCode }),
+        });
+        const renameJson = await rename.json();
+        if (!rename.ok) throw new Error(renameJson.error);
+        showToast(`Code changed — ${renameJson.moved} attendance day(s) moved`, 'success');
+      }
+
       const res = await fetch('/api/admin/employees', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employee_code: editForm.employeeCode,
+          employee_code: renamedCode,
           employee_name: editForm.employeeName,
           facility: editForm.facility,
           department: editForm.department,
@@ -370,6 +398,7 @@ export default function EmployeesTab() {
         e.employeeCode === editForm.employeeCode
           ? {
               ...e,
+              employeeCode: renamedCode,
               employeeName: editForm.employeeName,
               facility: editForm.facility,
               department: editForm.department,
@@ -595,6 +624,16 @@ export default function EmployeesTab() {
                   onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
                   onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
                 />
+                {/* The real code lands 4-5 days after joining. Mark it TMP- now, then edit
+                    the employee to set the real code — the rename moves the history with it. */}
+                <button
+                  type="button"
+                  onClick={() => setAddForm({ ...addForm, employeeCode: tempCode(addForm.employeeName) })}
+                  disabled={!addForm.employeeName.trim()}
+                  style={{ background: 'none', border: 'none', padding: '4px 0 0', fontFamily: 'var(--mono)', fontSize: 11, color: addForm.employeeName.trim() ? 'var(--accent)' : 'var(--text-3)', cursor: addForm.employeeName.trim() ? 'pointer' : 'not-allowed', textDecoration: 'underline' }}
+                >
+                  Code not issued yet — use a temporary one
+                </button>
               </Field>
 
               <Field label="Employee Name *">
@@ -722,8 +761,14 @@ export default function EmployeesTab() {
       )}
 
       {/* ── Edit modal ── */}
-      {editForm && (
-        <div style={modalOverlay}>
+      {/* Portaled to document.body for the same reason as Add: inside .tab-panel the
+          transform animation creates a containing block, so position:fixed centers on
+          the scrolled list instead of the viewport. */}
+      {editForm && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setEditForm(null); }}
+          style={{ ...modalOverlay, zIndex: 9000 }}
+        >
           <div style={modalBox}>
             <div>
               <h3 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, margin: 0 }}>
@@ -736,6 +781,21 @@ export default function EmployeesTab() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Employee Code">
+                <input
+                  value={editForm.newEmployeeCode}
+                  onChange={(e) => setEditForm({ ...editForm, newEmployeeCode: e.target.value })}
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; }}
+                />
+                {editForm.newEmployeeCode.trim() !== editForm.employeeCode && (
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--warn)', marginTop: 4 }}>
+                    All attendance history moves from {editForm.employeeCode} to this code on save.
+                  </div>
+                )}
+              </Field>
+
               <Field label="Name">
                 <input
                   value={editForm.employeeName}
@@ -891,7 +951,8 @@ export default function EmployeesTab() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -10,4 +10,6 @@ export interface HistoryRecord {
   ATTENDANCE_DATE?: string;
   JOINING_DATE?: string;  // YYYY-MM-DD or '' — only present when API joins employees table
   EXIT_DATE?: string;     // YYYY-MM-DD or '' — only present when API joins employees table
+  REPORTING_MANAGER?: string; // '' when unset — only present when API joins employees table
+  SHIFT?: string | null;
 }
