@@ -15,6 +15,13 @@ interface HistoryMatrixProps {
   shiftFilter?: string;
   /** '' = no filter. Display-only narrowing INSIDE the session's server-derived scope. */
   facilityFilter?: string;
+  /**
+   * Approved OT hours by employee_code, from the separate ot_requests ledger.
+   * READ-ONLY: it is displayed and exported, and never enters any attendance count,
+   * bucket, the P..NA row-sum invariant, Actual Present, or Final LOP.
+   * A code missing from the map reads as 0.
+   */
+  approvedOtHours?: Record<string, number>;
   fromDate?: string;
   toDate?: string;
   showSummary?: boolean;
@@ -50,6 +57,7 @@ export default function HistoryMatrix({
   rollTypeFilter = '',
   shiftFilter = '',
   facilityFilter = '',
+  approvedOtHours,
   fromDate,
   toDate,
   showSummary = false,
@@ -154,7 +162,7 @@ export default function HistoryMatrix({
     // because they are all-zero for the loaded range.
     const summaryHeaders = showSummary
       ? [...SUMMARY_BUCKETS.map((b) => b.label), 'Oth', 'NA', 'Total Days',
-         'Actual Present', 'Actual Week Off (incl Comp Off)', 'Final LOP']
+         'Actual Present', 'Actual Week Off (incl Comp Off)', 'Final LOP', 'Approved OT (hrs)']
       : [];
     const headers = [
       'Employee Code', 'Employee Name', 'Department', 'Reporting Manager', 'Shift',
@@ -175,6 +183,7 @@ export default function HistoryMatrix({
         ...SUMMARY_BUCKETS.map((b) => s.counts[b.key]),
         s.oth, s.na, s.totalDays,
         fmtCount(s.actualPresent), s.actualWeekOff, s.finalLop,
+        fmtCount(approvedOtHours?.[e.code] ?? 0),
       ];
     });
 
@@ -270,6 +279,8 @@ export default function HistoryMatrix({
                   <th title="P + WOW + 0.5 × H/D" style={{ ...summaryHeadBase, color: 'var(--success)' }}>Actual Present</th>
                   <th title="WO + C/O" style={{ ...summaryHeadBase, color: 'var(--text-2)' }}>Actual Week Off</th>
                   <th title="LOP + UL + A — NA is NOT counted in v1" style={{ ...summaryHeadBase, color: 'var(--danger)' }}>Final LOP</th>
+                  {/* Separate OT ledger — display only, outside every attendance count. */}
+                  <th title="SUM(ot_hours) where status = 'Approved', within the selected range" style={{ ...summaryHeadBase, color: 'var(--text-2)', borderLeft: '2px solid var(--border)' }}>Approved OT (hrs)</th>
                 </>
               )}
             </tr>
@@ -333,6 +344,14 @@ export default function HistoryMatrix({
                       <td style={{ ...cellBase, color: 'var(--success)' }}>{fmtCount(s.actualPresent)}</td>
                       <td style={{ ...cellBase, color: 'var(--text-2)' }}>{s.actualWeekOff}</td>
                       <td style={{ ...cellBase, color: 'var(--danger)' }}>{s.finalLop}</td>
+                      {(() => {
+                        const ot = approvedOtHours?.[emp.code] ?? 0;
+                        return (
+                          <td style={{ ...cellBase, borderLeft: '2px solid var(--border)', color: ot > 0 ? 'var(--text)' : 'var(--text-3)', fontWeight: ot > 0 ? 700 : 400 }}>
+                            {fmtCount(ot)}
+                          </td>
+                        );
+                      })()}
                     </>
                   );
                 })()}
@@ -340,7 +359,7 @@ export default function HistoryMatrix({
             ))}
             {filteredEmployees.length === 0 && (
               <tr>
-                <td colSpan={dates.length + 1 + (showPayrollDates ? 2 : 0) + (showSummary ? visibleBuckets.length + (hasOther ? 1 : 0) + 5 : 0)} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-3)' }}>
+                <td colSpan={dates.length + 1 + (showPayrollDates ? 2 : 0) + (showSummary ? visibleBuckets.length + (hasOther ? 1 : 0) + 6 : 0)} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-3)' }}>
                   No employees match the filter
                 </td>
               </tr>

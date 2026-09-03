@@ -85,7 +85,28 @@ export async function GET(request: NextRequest) {
         : r.ATTENDANCE_DATE,
     }));
 
-    return NextResponse.json({ records: formatted });
+    /**
+     * Approved OT hours per employee for the same range — a SEPARATE query, deliberately
+     * NOT joined into the attendance SELECT above.
+     *
+     * OT is a separate ledger with its own grain: an employee can have several OT rows
+     * for one date, so joining it in would multiply attendance rows and corrupt every
+     * headcount and status count. This runs alongside and is keyed by employee_code;
+     * an employee with no approved OT is simply absent from the map and reads as 0.
+     */
+    const otRows = await prisma.$queryRawUnsafe<{ employee_code: string; hours: string }[]>(`
+      SELECT o.employee_code AS employee_code, SUM(o.ot_hours) AS hours
+      FROM ot_requests o
+      WHERE ${facilitySqlIn('o.facility', resolveFacilityScope(session))}
+        AND o.status = 'Approved'
+        AND o.ot_date BETWEEN $1::date AND $2::date
+      GROUP BY o.employee_code
+    `, parsedFrom, parsedTo);
+
+    const approvedOtHours: Record<string, number> = {};
+    for (const r of otRows) approvedOtHours[r.employee_code] = Number(r.hours);
+
+    return NextResponse.json({ records: formatted, approvedOtHours });
   } catch (error) {
     console.error('GET /api/attendance/history-range error:', error);
     return NextResponse.json({ error: (error as Error).message ?? 'Failed to fetch history range' }, { status: 500 });

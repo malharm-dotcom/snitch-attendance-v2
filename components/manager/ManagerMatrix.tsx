@@ -33,6 +33,8 @@ export default function ManagerMatrix({ allFacilities = false }: ManagerMatrixPr
   const [toDate, setToDate] = useState(today);
   const [department, setDepartment] = useState(ALL_DEPTS);
   const [records, setRecords] = useState<HistoryRecord[]>([]);
+  /** Approved OT hours by employee_code. Read-only; never feeds an attendance count. */
+  const [approvedOtHours, setApprovedOtHours] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -61,8 +63,10 @@ export default function ManagerMatrix({ allFacilities = false }: ManagerMatrixPr
       );
       const data = await res.json();
       setRecords(data.records ?? []);
+      setApprovedOtHours(data.approvedOtHours ?? {});
     } catch {
       setRecords([]);
+      setApprovedOtHours({});
     } finally {
       setLoading(false);
     }
@@ -134,7 +138,7 @@ export default function ManagerMatrix({ allFacilities = false }: ManagerMatrixPr
       )}
 
       {!loading && records.length > 0 && (
-        <HistoryMatrix records={records} searchQuery={searchQuery} statusFilter={statusFilter} rollTypeFilter={rollTypeFilter} shiftFilter={shiftFilter} facilityFilter={facilityFilter} fromDate={fromDate} toDate={toDate} showSummary showPayrollDates />
+        <HistoryMatrix records={records} searchQuery={searchQuery} statusFilter={statusFilter} rollTypeFilter={rollTypeFilter} shiftFilter={shiftFilter} facilityFilter={facilityFilter} approvedOtHours={approvedOtHours} fromDate={fromDate} toDate={toDate} showSummary showPayrollDates />
       )}
 
       {!loading && records.length === 0 && (
