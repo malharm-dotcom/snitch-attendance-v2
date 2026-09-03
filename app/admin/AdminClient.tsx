@@ -15,8 +15,9 @@ import OfflineBanner from '@/components/shared/OfflineBanner';
 import SupervisorsTab from '@/components/admin/SupervisorsTab';
 import EmployeesTab from '@/components/admin/EmployeesTab';
 import OtPanel from '@/components/ot/OtPanel';
+import HiringPanel from '@/components/hiring/HiringPanel';
 
-type Tab = 'mark' | 'pending' | 'resolved' | 'records' | 'employees' | 'supervisors' | 'ot';
+type Tab = 'mark' | 'pending' | 'resolved' | 'records' | 'employees' | 'supervisors' | 'ot' | 'hiring';
 type RecordsTab = 'log' | 'reports';
 
 interface Props {
@@ -47,6 +48,7 @@ function AdminInner({ supervisorName, facility, allFacilities, department: initi
     { id: 'employees', label: 'Employees' },
     { id: 'supervisors', label: 'Supervisors' },
     { id: 'ot', label: 'Overtime' },
+    { id: 'hiring', label: 'Hiring' },
   ];
 
   const loadRequests = useCallback(async (status?: string) => {
@@ -227,6 +229,7 @@ function AdminInner({ supervisorName, facility, allFacilities, department: initi
         {activeTab === 'supervisors' && <div className="tab-panel"><SupervisorsTab /></div>}
         {/* Same OT workspace the manager shell renders — identical access. */}
         {activeTab === 'ot' && <div className="tab-panel"><OtPanel /></div>}
+        {activeTab === 'hiring' && <div className="tab-panel"><HiringPanel /></div>}
       </main>
     </>
   );

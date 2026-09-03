@@ -7,6 +7,7 @@ import SessionBanner from '@/components/supervisor/SessionBanner';
 import MarkAttendance from '@/components/supervisor/MarkAttendance';
 import HistoryPanel from '@/components/supervisor/HistoryPanel';
 import OtSubmitForm from '@/components/ot/OtSubmitForm';
+import HiringPanel from '@/components/hiring/HiringPanel';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 
 interface Props {
@@ -19,7 +20,7 @@ interface Props {
 }
 
 export default function SupervisorClient({ supervisorName, facility, allFacilities, department, departments, role }: Props) {
-  const [activeTab, setActiveTab] = useState<'mark' | 'history' | 'ot'>('mark');
+  const [activeTab, setActiveTab] = useState<'mark' | 'history' | 'ot' | 'hiring'>('mark');
   const [shift, setShift] = useState<'Day' | 'Night'>('Day');
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
 
@@ -27,6 +28,7 @@ export default function SupervisorClient({ supervisorName, facility, allFaciliti
     { id: 'mark', label: 'Mark Attendance' },
     { id: 'history', label: 'History' },
     { id: 'ot', label: 'Overtime' },
+    { id: 'hiring', label: 'Hiring' },
   ] as const;
 
   return (
@@ -90,6 +92,7 @@ export default function SupervisorClient({ supervisorName, facility, allFaciliti
             <OtSubmitForm departments={departments} />
           </div>
         )}
+        {activeTab === 'hiring' && <div className="tab-panel"><HiringPanel /></div>}
       </main>
     </ToastProvider>
   );

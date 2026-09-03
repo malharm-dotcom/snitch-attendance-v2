@@ -11,8 +11,9 @@ import OfflineBanner from '@/components/shared/OfflineBanner';
 import BulkUploadTab from '@/components/manager/BulkUploadTab';
 import ReportsTab from '@/components/manager/ReportsTab';
 import OtPanel from '@/components/ot/OtPanel';
+import HiringPanel from '@/components/hiring/HiringPanel';
 
-type Tab = 'pending' | 'resolved' | 'records' | 'employees' | 'ot';
+type Tab = 'pending' | 'resolved' | 'records' | 'employees' | 'ot' | 'hiring';
 type RecordsTab = 'log' | 'reports';
 
 interface Props {
@@ -38,6 +39,7 @@ function ManagerInner({ supervisorName, facility, allFacilities, role }: Props) 
     { id: 'records', label: 'Records' },
     { id: 'employees', label: 'Employees' },
     { id: 'ot', label: 'Overtime' },
+    { id: 'hiring', label: 'Hiring' },
   ];
 
   const loadRequests = useCallback(async (status?: string) => {
@@ -233,6 +235,7 @@ function ManagerInner({ supervisorName, facility, allFacilities, role }: Props) 
         {activeTab === 'employees' && <div className="tab-panel"><BulkUploadTab /></div>}
 
         {activeTab === 'ot' && <div className="tab-panel"><OtPanel /></div>}
+        {activeTab === 'hiring' && <div className="tab-panel"><HiringPanel /></div>}
       </main>
     </>
   );
