@@ -71,6 +71,20 @@ export function rollTypeFromCode(employeeCode: string): 'On-Roll' | 'Off-Roll' {
 
 export const ROLL_TYPES = ['On-Roll', 'Off-Roll'] as const;
 
+/**
+ * Read-time hygiene for the STORED employees.roll_type column, for the places that
+ * filter on the column itself (Employee View) rather than on rollTypeFromCode().
+ * "Off-Role"/"Off Roll"/"off-roll" collapse onto one "Off-Roll"; NULL/empty →
+ * "Not specified". Anything else passes through trimmed so it stays visible.
+ */
+export function normalizeRollType(rollType: string | null | undefined): string {
+  const t = (rollType ?? '').trim();
+  if (!t) return NOT_SPECIFIED;
+  if (/^off[-_ ]?rol[le]$/i.test(t)) return 'Off-Roll';
+  if (/^on[-_ ]?rol[le]$/i.test(t)) return 'On-Roll';
+  return t;
+}
+
 /** Trim + title-case gender; NULL/empty/unrecognised → "Not specified". */
 export function normalizeGender(gender: string | null | undefined): string {
   const g = (gender ?? '').trim().toLowerCase();

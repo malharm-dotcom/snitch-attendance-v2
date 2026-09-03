@@ -12,4 +12,5 @@ export interface HistoryRecord {
   EXIT_DATE?: string;     // YYYY-MM-DD or '' — only present when API joins employees table
   REPORTING_MANAGER?: string; // '' when unset — only present when API joins employees table
   SHIFT?: string | null;
+  ROLL_TYPE?: string | null; // raw employees.roll_type — normalize with normalizeRollType()
 }

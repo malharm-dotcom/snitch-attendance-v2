@@ -215,7 +215,7 @@ function AdminInner({ supervisorName, facility, allFacilities, department: initi
                     </button>
                   ))}
                 </div>
-                {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix />}
+                {logView === 'daily' ? <TodayStatusGrid facility={facility} /> : <ManagerMatrix allFacilities={allFacilities} />}
               </div>
             )}
             {recordsTab === 'reports' && <ReportsTab facility={facility} />}

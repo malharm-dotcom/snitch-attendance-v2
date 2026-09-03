@@ -52,6 +52,9 @@ export async function GET(request: NextRequest) {
         -- Roster shift, like department: one row per employee here, so the per-day
         -- header shift has nowhere to go.
         COALESCE(e.shift, '') AS "SHIFT",
+        -- Raw stored column. Hygiene ("Off-Role" -> "Off-Roll", NULL -> "Not
+        -- specified") is applied at read time by normalizeRollType().
+        COALESCE(e.roll_type, '') AS "ROLL_TYPE",
         d.attendance_date    AS "ATTENDANCE_DATE"
       FROM (
         SELECT

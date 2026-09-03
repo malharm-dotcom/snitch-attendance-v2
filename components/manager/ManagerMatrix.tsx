@@ -1,14 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import HistoryMatrix from '../history/HistoryMatrix';
 import { istDateString } from '@/lib/ist';
 import { DEPARTMENTS } from '@/lib/constants';
+import { normalizeRollType, NOT_SPECIFIED } from '@/lib/reporting';
 import type { HistoryRecord } from '@/lib/types';
 
 const ALL_DEPTS = '__all__';
 
-export default function ManagerMatrix() {
+/** Same field styling as the Department dropdown / the Reports shift control. */
+const selectStyle: React.CSSProperties = { padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13, background: 'var(--surface)' };
+const labelStyle: React.CSSProperties = { display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' };
+
+/** Distinct values in the loaded rows, sorted, with "Not specified" pinned last. */
+function distinct(values: string[]): string[] {
+  const set = new Set(values.filter(Boolean));
+  const out = Array.from(set).sort();
+  return [...out.filter((v) => v !== NOT_SPECIFIED), ...out.filter((v) => v === NOT_SPECIFIED)];
+}
+
+interface ManagerMatrixProps {
+  /** Mirrors the Topbar condition — only an all-access session sees a facility control. */
+  allFacilities?: boolean;
+}
+
+export default function ManagerMatrix({ allFacilities = false }: ManagerMatrixProps) {
   const today = istDateString();
   const sevenAgo = istDateString(new Date(Date.now() - 6 * 86400000));
 
@@ -19,6 +36,20 @@ export default function ManagerMatrix() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [rollTypeFilter, setRollTypeFilter] = useState('');
+  const [shiftFilter, setShiftFilter] = useState('');
+  const [facilityFilter, setFacilityFilter] = useState('');
+
+  // Options come from the rows already on screen — no extra endpoint, and the list can
+  // never offer a facility outside the session's server-derived scope.
+  const rollTypeOptions = useMemo(
+    () => distinct(records.map((r) => normalizeRollType(r.ROLL_TYPE))),
+    [records]
+  );
+  const facilityOptions = useMemo(
+    () => distinct(records.map((r) => r.FACILITY ?? '')),
+    [records]
+  );
 
   async function load() {
     if (!department && department !== ALL_DEPTS) return;
@@ -48,6 +79,30 @@ export default function ManagerMatrix() {
             {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
+        <div>
+          <label style={labelStyle}>Roll Type</label>
+          <select value={rollTypeFilter} onChange={(e) => setRollTypeFilter(e.target.value)} style={selectStyle}>
+            <option value="">All roll types</option>
+            {rollTypeOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Shift</label>
+          <select value={shiftFilter} onChange={(e) => setShiftFilter(e.target.value)} style={selectStyle}>
+            <option value="">All shifts</option>
+            <option value="Day">Day</option>
+            <option value="Night">Night</option>
+          </select>
+        </div>
+        {allFacilities && (
+          <div>
+            <label style={labelStyle}>Facility</label>
+            <select value={facilityFilter} onChange={(e) => setFacilityFilter(e.target.value)} style={selectStyle}>
+              <option value="">All facilities</option>
+              {facilityOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+        )}
         <div>
           <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>From</label>
           <input type="date" value={fromDate} max={today} onChange={(e) => setFromDate(e.target.value)} style={{ padding: '9px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontFamily: 'var(--mono)', fontSize: 13 }} />
@@ -79,7 +134,7 @@ export default function ManagerMatrix() {
       )}
 
       {!loading && records.length > 0 && (
-        <HistoryMatrix records={records} searchQuery={searchQuery} statusFilter={statusFilter} fromDate={fromDate} toDate={toDate} showSummary showPayrollDates />
+        <HistoryMatrix records={records} searchQuery={searchQuery} statusFilter={statusFilter} rollTypeFilter={rollTypeFilter} shiftFilter={shiftFilter} facilityFilter={facilityFilter} fromDate={fromDate} toDate={toDate} showSummary showPayrollDates />
       )}
 
       {!loading && records.length === 0 && (

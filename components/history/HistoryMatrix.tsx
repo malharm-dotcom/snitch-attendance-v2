@@ -2,12 +2,18 @@
 
 import { useMemo, useState } from 'react';
 import { MATRIX_CHIP_LABELS } from '@/lib/constants';
+import { normalizeRollType, normalizeShift } from '@/lib/reporting';
 import type { HistoryRecord } from '@/lib/types';
 
 interface HistoryMatrixProps {
   records: HistoryRecord[];
   searchQuery: string;
   statusFilter: string;
+  /** '' = no filter. Compared against the NORMALIZED roster value, not the raw column. */
+  rollTypeFilter?: string;
+  shiftFilter?: string;
+  /** '' = no filter. Display-only narrowing INSIDE the session's server-derived scope. */
+  facilityFilter?: string;
   fromDate?: string;
   toDate?: string;
   showSummary?: boolean;
@@ -34,6 +40,9 @@ export default function HistoryMatrix({
   records,
   searchQuery,
   statusFilter,
+  rollTypeFilter = '',
+  shiftFilter = '',
+  facilityFilter = '',
   fromDate,
   toDate,
   showSummary = false,
@@ -43,7 +52,7 @@ export default function HistoryMatrix({
 
   const { employees, dates, matrix } = useMemo(() => {
     const dateSet = new Set<string>();
-    const empMap = new Map<string, { code: string; name: string; joiningDate: string; exitDate: string; department: string; reportingManager: string; shift: string }>();
+    const empMap = new Map<string, { code: string; name: string; joiningDate: string; exitDate: string; department: string; reportingManager: string; shift: string; rollType: string; facility: string }>();
 
     for (const r of records) {
       if (!r.ATTENDANCE_DATE) continue;
@@ -59,6 +68,8 @@ export default function HistoryMatrix({
           department: r.DEPARTMENT ?? '',
           reportingManager: r.REPORTING_MANAGER ?? '',
           shift: r.SHIFT ?? '',
+          rollType: r.ROLL_TYPE ?? '',
+          facility: r.FACILITY ?? '',
         });
       }
     }
@@ -104,12 +115,15 @@ export default function HistoryMatrix({
       const q = searchQuery.toLowerCase();
       const matchSearch = !q || e.name.toLowerCase().includes(q) || e.code.toLowerCase().includes(q);
       if (!matchSearch) return false;
+      if (rollTypeFilter && normalizeRollType(e.rollType) !== rollTypeFilter) return false;
+      if (shiftFilter && normalizeShift(e.shift) !== shiftFilter) return false;
+      if (facilityFilter && e.facility !== facilityFilter) return false;
       if (statusFilter) {
         return dates.some((d) => matrix.get(e.code)?.get(d)?.ATTENDANCE_STATUS === statusFilter);
       }
       return true;
     });
-  }, [employees, searchQuery, statusFilter, dates, matrix]);
+  }, [employees, searchQuery, statusFilter, rollTypeFilter, shiftFilter, facilityFilter, dates, matrix]);
 
   /** Short code shown in the matrix chips (P / AB / UL / WO …), falling back to the full label. */
   function statusCode(status: string): string {
