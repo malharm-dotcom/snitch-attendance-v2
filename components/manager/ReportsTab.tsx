@@ -8,6 +8,7 @@ import { useToast } from '../shared/Toast';
 import DeptPivotTable from './DeptPivotTable';
 import ManpowerSummaryTable, { type ManpowerData } from './ManpowerSummaryTable';
 import AttendanceRateTable, { type RateData } from './AttendanceRateTable';
+import OtReportTable, { type OtReportData } from './OtReportTable';
 import ExportControls from './ExportControls';
 import EmptyState from './EmptyState';
 import ScopeNote from './ScopeNote';
@@ -16,7 +17,7 @@ interface ReportsTabProps {
   facility: string;
 }
 
-type ReportType = 'daily' | 'range' | 'pivot' | 'manpower' | 'rate';
+type ReportType = 'daily' | 'range' | 'pivot' | 'manpower' | 'rate' | 'ot';
 
 interface PivotResult {
   shift: string;
@@ -49,6 +50,8 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
   const [pivotData, setPivotData] = useState<PivotResult | null>(null);
   const [manpowerData, setManpowerData] = useState<ManpowerData | null>(null);
   const [rateData, setRateData] = useState<RateData | null>(null);
+  const [otData, setOtData] = useState<OtReportData | null>(null);
+  const [otRange, setOtRange] = useState<{ from: string; to: string }>({ from: fromDate, to: toDate });
   const [rateRange, setRateRange] = useState<{ from: string; to: string }>({ from: fromDate, to: toDate });
   const [pivotRange, setPivotRange] = useState<{ from: string; to: string }>({ from: fromDate, to: toDate });
   const [rateLevel, setRateLevel] = useState<'facility' | 'department'>('facility');
@@ -62,6 +65,7 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
     setPivotData(null);
     setManpowerData(null);
     setRateData(null);
+    setOtData(null);
     try {
       let url = '';
 
@@ -85,6 +89,10 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
         const params = new URLSearchParams({ from: fromDate, to: toDate, level: rateLevel });
         if (shift) params.append('shift', shift);
         url = `/api/reports/attendance-rate?${params}`;
+      } else if (reportType === 'ot') {
+        // OT is its own ledger — no shift/department filter, and no facility param
+        // (the route scopes from the session like every other report).
+        url = `/api/reports/ot?${new URLSearchParams({ from: fromDate, to: toDate })}`;
       }
 
       const res = await fetch(url);
@@ -105,6 +113,10 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
         setRateData(json);
         setRateRange({ from: fromDate, to: toDate });
         if (!json.rows?.length) showToast('No data found for this date range', 'info');
+      } else if (reportType === 'ot') {
+        setOtData(json);
+        setOtRange({ from: fromDate, to: toDate });
+        if (!json.rows?.length) showToast('No OT requests in this date range', 'info');
       } else {
         const rows = json.rows ?? json.employees ?? [];
         setData(rows);
@@ -134,6 +146,7 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
           { id: 'pivot', label: 'Dept Pivot' },
           { id: 'manpower', label: 'Manpower Summary' },
           { id: 'rate', label: 'Attendance Rate' },
+          { id: 'ot', label: 'Overtime' },
         ] as { id: ReportType; label: string }[]).map((r) => (
           <button
             key={r.id}
@@ -175,7 +188,7 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
           </>
         )}
 
-        {(reportType === 'range' || reportType === 'pivot' || reportType === 'rate') && (
+        {(reportType === 'range' || reportType === 'pivot' || reportType === 'rate' || reportType === 'ot') && (
           <>
             <div>
               <label style={{ display: 'block', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>From</label>
@@ -323,6 +336,10 @@ export default function ReportsTab({ facility }: ReportsTabProps) {
 
       {!loading && reportType === 'rate' && rateData && (
         <AttendanceRateTable data={rateData} fromDate={rateRange.from} toDate={rateRange.to} facility={facility} />
+      )}
+
+      {!loading && reportType === 'ot' && otData && (
+        <OtReportTable data={otData} fromDate={otRange.from} toDate={otRange.to} facility={facility} />
       )}
     </div>
   );
