@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { MATRIX_CHIP_LABELS } from '@/lib/constants';
 import { normalizeRollType, normalizeShift } from '@/lib/reporting';
+import { SUMMARY_BUCKETS, STATUS_TO_BUCKET, calendarRange, summarizeEmployee, fmtCount } from '@/lib/attendanceSummary';
 import type { HistoryRecord } from '@/lib/types';
 
 interface HistoryMatrixProps {
@@ -28,6 +29,12 @@ interface TooltipState {
   employee: string;
   date: string;
 }
+
+/** Column accent colours — presence green, absence red, everything else neutral. */
+const SUMMARY_HEAD_COLOR: Record<string, string> = {
+  P: 'var(--success)', WOW: 'var(--success)',
+  A: 'var(--danger)', UL: 'var(--danger)', LOP: 'var(--danger)',
+};
 
 function fmtDDMMYYYY(s: string | undefined): string {
   if (!s) return '';
@@ -88,26 +95,37 @@ export default function HistoryMatrix({
     return { employees, dates, matrix: mat };
   }, [records]);
 
-  const totalDays = useMemo(() => {
-    if (!showSummary || !fromDate || !toDate) return 0;
-    return (
-      Math.round(
-        (new Date(toDate + 'T00:00:00Z').getTime() - new Date(fromDate + 'T00:00:00Z').getTime()) / 86400000
-      ) + 1
-    );
-  }, [showSummary, fromDate, toDate]);
+  /** Every calendar day in the range — NOT just days with a record, which is what NA needs. */
+  const rangeDates = useMemo(
+    () => (showSummary && fromDate && toDate ? calendarRange(fromDate, toDate) : []),
+    [showSummary, fromDate, toDate],
+  );
 
-  function getSummary(code: string) {
-    const present = dates.filter((d) => {
-      const s = matrix.get(code)?.get(d)?.ATTENDANCE_STATUS;
-      return s === 'Present' || s === 'Work on Week Off';
-    }).length;
-    const lop = dates.filter((d) => {
-      const s = matrix.get(code)?.get(d)?.ATTENDANCE_STATUS;
-      return s === 'LOP' || s === 'Unpaid Leave';
-    }).length;
-    const absent = Math.max(0, totalDays - present - lop);
-    return { present, lop, absent };
+  const totalDays = rangeDates.length;
+
+  /** Columns to render: a status bucket appears only if one of its statuses is in the data. */
+  const visibleBuckets = useMemo(() => {
+    const present = new Set(records.map((r) => (r.ATTENDANCE_STATUS ?? '').trim()));
+    return SUMMARY_BUCKETS.filter((b) => b.statuses.some((s) => present.has(s)));
+  }, [records]);
+
+  const hasOther = useMemo(
+    () => records.some((r) => {
+      const s = (r.ATTENDANCE_STATUS ?? '').trim();
+      return s !== '' && !STATUS_TO_BUCKET[s];
+    }),
+    [records],
+  );
+
+  function getSummary(emp: { code: string; joiningDate: string; exitDate: string }) {
+    const days = matrix.get(emp.code);
+    const statusByDate = days && new Map(Array.from(days, ([d, r]) => [d, r.ATTENDANCE_STATUS]));
+    return summarizeEmployee(
+      { statusByDate, joiningDate: emp.joiningDate, exitDate: emp.exitDate },
+      rangeDates,
+      fromDate ?? '',
+      toDate ?? '',
+    );
   }
 
   const filteredEmployees = useMemo(() => {
@@ -132,7 +150,12 @@ export default function HistoryMatrix({
 
   function downloadCSV(mode: 'codes' | 'labels') {
     const payrollHeaders = showPayrollDates ? ['Joining Date', 'Exit Date'] : [];
-    const summaryHeaders = showSummary ? ['Present', 'LOP', 'Total Days', 'Absent'] : [];
+    // The CSV carries the FULL summary column set, including buckets hidden on screen
+    // because they are all-zero for the loaded range.
+    const summaryHeaders = showSummary
+      ? [...SUMMARY_BUCKETS.map((b) => b.label), 'Oth', 'NA', 'Total Days',
+         'Actual Present', 'Actual Week Off (incl Comp Off)', 'Final LOP']
+      : [];
     const headers = [
       'Employee Code', 'Employee Name', 'Department', 'Reporting Manager', 'Shift',
       ...payrollHeaders, ...dates, ...summaryHeaders,
@@ -146,8 +169,13 @@ export default function HistoryMatrix({
       const dateCols = dates.map((d) => cell(matrix.get(e.code)?.get(d)?.ATTENDANCE_STATUS));
       const lead = [e.code, e.name, e.department, e.reportingManager, e.shift];
       if (!showSummary) return [...lead, ...payrollCols, ...dateCols];
-      const { present, lop, absent } = getSummary(e.code);
-      return [...lead, ...payrollCols, ...dateCols, present, lop, totalDays, absent];
+      const s = getSummary(e);
+      return [
+        ...lead, ...payrollCols, ...dateCols,
+        ...SUMMARY_BUCKETS.map((b) => s.counts[b.key]),
+        s.oth, s.na, s.totalDays,
+        fmtCount(s.actualPresent), s.actualWeekOff, s.finalLop,
+      ];
     });
 
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -167,6 +195,17 @@ export default function HistoryMatrix({
       </div>
     );
   }
+
+  const summaryHeadBase: React.CSSProperties = {
+    padding: '10px 10px',
+    textAlign: 'center',
+    fontWeight: 700,
+    borderBottom: '2px solid var(--border)',
+    whiteSpace: 'nowrap',
+    background: 'var(--surface2)',
+    fontSize: 11,
+    textTransform: 'uppercase',
+  };
 
   const dateCellBase: React.CSSProperties = {
     padding: '10px 10px',
@@ -216,10 +255,21 @@ export default function HistoryMatrix({
               ))}
               {showSummary && (
                 <>
-                  <th style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid var(--border)', borderLeft: '2px solid var(--border)', whiteSpace: 'nowrap', background: 'var(--surface2)', color: 'var(--success)', fontSize: 11, textTransform: 'uppercase' }}>Present</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap', background: 'var(--surface2)', color: 'var(--danger)', fontSize: 11, textTransform: 'uppercase' }}>LOP</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap', background: 'var(--surface2)', color: 'var(--text-2)', fontSize: 11, textTransform: 'uppercase' }}>/{totalDays}d</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 700, borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap', background: 'var(--surface2)', color: 'var(--warn)', fontSize: 11, textTransform: 'uppercase' }}>Absent</th>
+                  {visibleBuckets.map((b, i) => (
+                    <th
+                      key={b.key}
+                      title={b.statuses.join(' + ')}
+                      style={{ ...summaryHeadBase, color: SUMMARY_HEAD_COLOR[b.key] ?? 'var(--text-2)', ...(i === 0 ? { borderLeft: '2px solid var(--border)' } : {}) }}
+                    >
+                      {b.label}
+                    </th>
+                  ))}
+                  {hasOther && <th title="Statuses not yet assigned a column — pending sign-off" style={{ ...summaryHeadBase, color: 'var(--text-3)' }}>Oth</th>}
+                  <th title="Days in range with no attendance record, inside the employment window" style={{ ...summaryHeadBase, color: 'var(--warn)' }}>NA</th>
+                  <th style={{ ...summaryHeadBase, color: 'var(--text-2)', fontWeight: 500, borderLeft: '2px solid var(--border)' }}>Total Days</th>
+                  <th title="P + WOW + 0.5 × H/D" style={{ ...summaryHeadBase, color: 'var(--success)' }}>Actual Present</th>
+                  <th title="WO + C/O" style={{ ...summaryHeadBase, color: 'var(--text-2)' }}>Actual Week Off</th>
+                  <th title="LOP + UL + A — NA is NOT counted in v1" style={{ ...summaryHeadBase, color: 'var(--danger)' }}>Final LOP</th>
                 </>
               )}
             </tr>
@@ -267,14 +317,22 @@ export default function HistoryMatrix({
                   );
                 })}
                 {showSummary && (() => {
-                  const { present, lop, absent } = getSummary(emp.code);
+                  const s = getSummary(emp);
                   const cellBase: React.CSSProperties = { padding: '8px 12px', textAlign: 'center', fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 12, background: 'var(--surface2)' };
+                  const zero = (n: number): React.CSSProperties => (n === 0 ? { color: 'var(--text-3)', fontWeight: 400 } : {});
                   return (
                     <>
-                      <td style={{ ...cellBase, borderLeft: '2px solid var(--border)', color: 'var(--success)' }}>{present}</td>
-                      <td style={{ ...cellBase, color: 'var(--danger)' }}>{lop}</td>
-                      <td style={{ ...cellBase, color: 'var(--text-2)', fontWeight: 500 }}>{totalDays}</td>
-                      <td style={{ ...cellBase, color: 'var(--warn)' }}>{absent}</td>
+                      {visibleBuckets.map((b, i) => (
+                        <td key={b.key} style={{ ...cellBase, color: SUMMARY_HEAD_COLOR[b.key] ?? 'var(--text-2)', ...zero(s.counts[b.key]), ...(i === 0 ? { borderLeft: '2px solid var(--border)' } : {}) }}>
+                          {s.counts[b.key]}
+                        </td>
+                      ))}
+                      {hasOther && <td style={{ ...cellBase, color: 'var(--text-2)', ...zero(s.oth) }}>{s.oth}</td>}
+                      <td style={{ ...cellBase, color: 'var(--warn)', ...zero(s.na) }}>{s.na}</td>
+                      <td style={{ ...cellBase, color: 'var(--text-2)', fontWeight: 500, borderLeft: '2px solid var(--border)' }}>{s.totalDays}</td>
+                      <td style={{ ...cellBase, color: 'var(--success)' }}>{fmtCount(s.actualPresent)}</td>
+                      <td style={{ ...cellBase, color: 'var(--text-2)' }}>{s.actualWeekOff}</td>
+                      <td style={{ ...cellBase, color: 'var(--danger)' }}>{s.finalLop}</td>
                     </>
                   );
                 })()}
@@ -282,7 +340,7 @@ export default function HistoryMatrix({
             ))}
             {filteredEmployees.length === 0 && (
               <tr>
-                <td colSpan={dates.length + 1 + (showPayrollDates ? 2 : 0) + (showSummary ? 4 : 0)} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-3)' }}>
+                <td colSpan={dates.length + 1 + (showPayrollDates ? 2 : 0) + (showSummary ? visibleBuckets.length + (hasOther ? 1 : 0) + 5 : 0)} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-3)' }}>
                   No employees match the filter
                 </td>
               </tr>
