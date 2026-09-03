@@ -126,3 +126,43 @@ model OtRequest {
   @@index([employeeCode, otDate])
   @@map("ot_requests")
 }
+
+// Hiring request tracker — two-step approval on EXISTING roles:
+//   Pending Manager -> (manager) -> Pending HR/Admin -> (admin) -> Approved
+// then Approved -> In Progress -> Joined -> Closed, driven by admin.
+// No new roles: manager and admin are the same session roles used everywhere else.
+model HiringRequest {
+  id                  Int       @id @default(autoincrement())
+  department          String    @db.VarChar(100)
+  /// Free text: not every sub-department exists in the DEPARTMENTS list.
+  subDepartment       String?   @map("sub_department") @db.VarChar(100)
+  position            String    @db.VarChar(200)
+  headcount           Int
+  /// Stamped SERVER-SIDE from the session. Never accepted from the client.
+  facility            String    @db.VarChar(50)
+  /// 'New' | 'Replacement' — enforced by CHECK.
+  reqType             String    @map("req_type") @db.VarChar(20)
+  justification       String    @db.Text
+  requestedBy         String    @map("requested_by") @db.VarChar(200)
+  /// Calendar date — plain YYYY-MM-DD, never timezone-shifted.
+  expectedJoiningDate DateTime  @map("expected_joining_date") @db.Date
+  /// 'Pending Manager' | 'Pending HR/Admin' | 'Approved' | 'Rejected'
+  /// | 'In Progress' | 'Joined' | 'Closed' — enforced by CHECK.
+  status              String    @default("Pending Manager") @db.VarChar(20)
+  mgrApprovedBy       String?   @map("mgr_approved_by") @db.VarChar(200)
+  /// Instants, not calendar dates — timestamptz, stored UTC.
+  mgrApprovedAt       DateTime? @map("mgr_approved_at") @db.Timestamptz(6)
+  adminApprovedBy     String?   @map("admin_approved_by") @db.VarChar(200)
+  adminApprovedAt     DateTime? @map("admin_approved_at") @db.Timestamptz(6)
+  /// Mandatory whenever status is 'Rejected' — enforced by CHECK.
+  rejectionReason     String?   @map("rejection_reason") @db.Text
+  /// 0 <= joined_count <= headcount, enforced by CHECK, so Open Positions can never go negative.
+  joinedCount         Int       @default(0) @map("joined_count")
+  joinedNotes         String?   @map("joined_notes") @db.Text
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  closedAt            DateTime? @map("closed_at") @db.Timestamptz(6)
+
+  @@index([facility, status])
+  @@index([department])
+  @@map("hiring_requests")
+}
