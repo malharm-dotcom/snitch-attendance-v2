@@ -41,6 +41,7 @@ model Employee {
   loadedAt         DateTime  @default(now()) @map("loaded_at")
 
   attendanceDetails AttendanceDetail[]
+  otRequests        OtRequest[]
 
   @@map("employees")
 }
@@ -92,4 +93,36 @@ model AttendanceRewriteRequest {
   actionedAt     DateTime? @map("actioned_at") @db.Timestamp(6)
 
   @@map("attendance_rewrite_requests")
+}
+
+// Overtime ledger — DELIBERATELY SEPARATE from attendance.
+//
+// OT is never written into attendance_detail.attendance_status: a day can be Present
+// AND carry OT hours, and mixing the two would corrupt every attendance count and the
+// LOP calculation. Single-level Manager approval, parallel to AttendanceRewriteRequest.
+
+model OtRequest {
+  id              Int       @id @default(autoincrement())
+  employeeCode    String    @map("employee_code") @db.VarChar(50)
+  /// Stamped SERVER-SIDE from the session. Never accepted from the client.
+  facility        String    @db.VarChar(50)
+  /// Calendar date — plain YYYY-MM-DD, never timezone-shifted.
+  otDate          DateTime  @map("ot_date") @db.Date
+  /// Half-hour steps; the 0.5 step and the 0 < h <= 24 range are enforced by CHECK.
+  otHours         Decimal   @map("ot_hours") @db.Decimal(4, 2)
+  reason          String    @db.Text
+  /// 'Pending' | 'Approved' | 'Rejected' — enforced by CHECK.
+  status          String    @default("Pending") @db.VarChar(20)
+  requestedBy     String    @map("requested_by") @db.VarChar(200)
+  approvedBy      String?   @map("approved_by") @db.VarChar(200)
+  /// An instant, not a calendar date — timestamptz, stored UTC.
+  approvedAt      DateTime? @map("approved_at") @db.Timestamptz(6)
+  rejectionReason String?   @map("rejection_reason") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  employee Employee @relation(fields: [employeeCode], references: [employeeCode])
+
+  @@index([facility, status])
+  @@index([employeeCode, otDate])
+  @@map("ot_requests")
 }
