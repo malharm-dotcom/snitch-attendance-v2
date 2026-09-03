@@ -6,6 +6,7 @@ import Topbar from '@/components/shared/Topbar';
 import SessionBanner from '@/components/supervisor/SessionBanner';
 import MarkAttendance from '@/components/supervisor/MarkAttendance';
 import HistoryPanel from '@/components/supervisor/HistoryPanel';
+import OtSubmitForm from '@/components/ot/OtSubmitForm';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 
 interface Props {
@@ -18,13 +19,14 @@ interface Props {
 }
 
 export default function SupervisorClient({ supervisorName, facility, allFacilities, department, departments, role }: Props) {
-  const [activeTab, setActiveTab] = useState<'mark' | 'history'>('mark');
+  const [activeTab, setActiveTab] = useState<'mark' | 'history' | 'ot'>('mark');
   const [shift, setShift] = useState<'Day' | 'Night'>('Day');
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
 
   const tabs = [
     { id: 'mark', label: 'Mark Attendance' },
     { id: 'history', label: 'History' },
+    { id: 'ot', label: 'Overtime' },
   ] as const;
 
   return (
@@ -81,6 +83,11 @@ export default function SupervisorClient({ supervisorName, facility, allFaciliti
         {activeTab === 'history' && (
           <div className="tab-panel">
             <HistoryPanel departments={departments} />
+          </div>
+        )}
+        {activeTab === 'ot' && (
+          <div className="tab-panel">
+            <OtSubmitForm departments={departments} />
           </div>
         )}
       </main>

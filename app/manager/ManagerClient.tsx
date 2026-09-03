@@ -10,8 +10,10 @@ import ManagerMatrix from '@/components/manager/ManagerMatrix';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 import BulkUploadTab from '@/components/manager/BulkUploadTab';
 import ReportsTab from '@/components/manager/ReportsTab';
+import OtSubmitForm from '@/components/ot/OtSubmitForm';
+import { DEPARTMENTS } from '@/lib/constants';
 
-type Tab = 'pending' | 'resolved' | 'records' | 'employees';
+type Tab = 'pending' | 'resolved' | 'records' | 'employees' | 'ot';
 type RecordsTab = 'log' | 'reports';
 
 interface Props {
@@ -36,6 +38,7 @@ function ManagerInner({ supervisorName, facility, allFacilities, role }: Props) 
     { id: 'resolved', label: 'Resolved' },
     { id: 'records', label: 'Records' },
     { id: 'employees', label: 'Employees' },
+    { id: 'ot', label: 'Overtime' },
   ];
 
   const loadRequests = useCallback(async (status?: string) => {
@@ -229,6 +232,9 @@ function ManagerInner({ supervisorName, facility, allFacilities, role }: Props) 
         )}
 
         {activeTab === 'employees' && <div className="tab-panel"><BulkUploadTab /></div>}
+
+        {/* Step 3 adds the approval queue alongside this form. */}
+        {activeTab === 'ot' && <div className="tab-panel"><OtSubmitForm departments={DEPARTMENTS} /></div>}
       </main>
     </>
   );
