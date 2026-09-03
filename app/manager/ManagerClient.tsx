@@ -10,13 +10,10 @@ import ManagerMatrix from '@/components/manager/ManagerMatrix';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 import BulkUploadTab from '@/components/manager/BulkUploadTab';
 import ReportsTab from '@/components/manager/ReportsTab';
-import OtSubmitForm from '@/components/ot/OtSubmitForm';
-import OtApprovalQueue from '@/components/ot/OtApprovalQueue';
-import { DEPARTMENTS } from '@/lib/constants';
+import OtPanel from '@/components/ot/OtPanel';
 
 type Tab = 'pending' | 'resolved' | 'records' | 'employees' | 'ot';
 type RecordsTab = 'log' | 'reports';
-type OtTab = 'queue' | 'raise';
 
 interface Props {
   supervisorName: string;
@@ -33,7 +30,6 @@ function ManagerInner({ supervisorName, facility, allFacilities, role }: Props) 
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [logView, setLogView] = useState<'daily' | 'matrix'>('daily');
   const [recordsTab, setRecordsTab] = useState<RecordsTab>('log');
-  const [otTab, setOtTab] = useState<OtTab>('queue');
   const { showToast } = useToast();
 
   const tabs: { id: Tab; label: string }[] = [
@@ -236,31 +232,7 @@ function ManagerInner({ supervisorName, facility, allFacilities, role }: Props) 
 
         {activeTab === 'employees' && <div className="tab-panel"><BulkUploadTab /></div>}
 
-        {activeTab === 'ot' && (
-          <div className="tab-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['queue', 'raise'] as const).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setOtTab(v)}
-                  style={{
-                    padding: '7px 16px',
-                    border: '1.5px solid var(--border)',
-                    borderRadius: 6,
-                    background: otTab === v ? 'var(--text)' : 'var(--surface)',
-                    color: otTab === v ? '#fff' : 'var(--text-2)',
-                    fontFamily: 'var(--mono)',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {v === 'queue' ? 'Approvals' : 'Raise OT'}
-                </button>
-              ))}
-            </div>
-            {otTab === 'queue' ? <OtApprovalQueue /> : <OtSubmitForm departments={DEPARTMENTS} />}
-          </div>
-        )}
+        {activeTab === 'ot' && <div className="tab-panel"><OtPanel /></div>}
       </main>
     </>
   );
