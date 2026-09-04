@@ -235,7 +235,7 @@ function ManagerInner({ supervisorName, facility, allFacilities, role }: Props) 
         {activeTab === 'employees' && <div className="tab-panel"><BulkUploadTab /></div>}
 
         {activeTab === 'ot' && <div className="tab-panel"><OtPanel /></div>}
-        {activeTab === 'hiring' && <div className="tab-panel"><HiringPanel role={role} /></div>}
+        {activeTab === 'hiring' && <div className="tab-panel"><HiringPanel role={role} facility={facility} /></div>}
       </main>
     </>
   );

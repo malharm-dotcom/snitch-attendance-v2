@@ -92,7 +92,7 @@ export default function SupervisorClient({ supervisorName, facility, allFaciliti
             <OtSubmitForm departments={departments} />
           </div>
         )}
-        {activeTab === 'hiring' && <div className="tab-panel"><HiringPanel role={role} /></div>}
+        {activeTab === 'hiring' && <div className="tab-panel"><HiringPanel role={role} facility={facility} /></div>}
       </main>
     </ToastProvider>
   );

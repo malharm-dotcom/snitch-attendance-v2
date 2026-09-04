@@ -4,7 +4,9 @@ import { getSession } from '@/lib/auth';
 import { resolveFacilityScope, facilityPrismaFilter } from '@/lib/facilityScope';
 import { formatAttendanceDate } from '@/lib/ist';
 
-export const HIRING_STATUSES = [
+// Not exported: a Next.js route module may only export route handlers and its
+// config, and an extra value export breaks the generated route types.
+const HIRING_STATUSES = [
   'Pending Manager', 'Pending HR/Admin', 'Approved',
   'Rejected', 'In Progress', 'Joined', 'Closed',
 ] as const;
