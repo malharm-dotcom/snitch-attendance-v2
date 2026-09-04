@@ -229,7 +229,7 @@ function AdminInner({ supervisorName, facility, allFacilities, department: initi
         {activeTab === 'supervisors' && <div className="tab-panel"><SupervisorsTab /></div>}
         {/* Same OT workspace the manager shell renders — identical access. */}
         {activeTab === 'ot' && <div className="tab-panel"><OtPanel /></div>}
-        {activeTab === 'hiring' && <div className="tab-panel"><HiringPanel /></div>}
+        {activeTab === 'hiring' && <div className="tab-panel"><HiringPanel role="admin" /></div>}
       </main>
     </>
   );
